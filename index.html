@@ -241,6 +241,46 @@ img{max-width:100%}
 .ntg label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 #n-ok{background:var(--s-done);border-color:var(--s-done);color:var(--surface);font-size:1.05rem;padding:12px 18px}
 .nconf{font-size:.88rem;display:flex;flex-direction:column;gap:2px}
+/* ===== スマホ用：文字を大きく・太く ===== */
+@media (max-width:600px){
+  body{font-size:17px;line-height:1.6;font-weight:500}
+  h1{font-size:1.9rem}
+  .title{font-size:1.1rem;font-weight:700}
+  .meta{font-size:.88rem;font-weight:500}
+  .pill{font-size:.84rem;padding:2px 9px}
+  .due{font-size:.95rem;font-weight:700}
+  .due em{font-size:.82rem}
+  li.task .open{grid-template-columns:4.9rem 1fr;padding:14px 12px}
+  .memo1{font-size:.9rem}
+  .chip{font-size:1rem;padding:8px 14px;font-weight:700}
+  .tabs button{font-size:1.02rem;padding:11px 6px}
+  .sum{padding:8px}
+  .sum b{font-size:1.55rem}
+  .sum span{font-size:.8rem;font-weight:700}
+  .mine-head{font-size:1rem;font-weight:700}
+  .mine-head select{font-size:1rem;padding:6px 10px}
+  .mine-big .who{font-size:1.12rem}
+  .mine-big b{font-size:3rem}
+  input,select,textarea{font-size:16px;padding:10px 12px}
+  textarea.title-in{font-size:1.12rem}
+  .btn{font-size:1rem;padding:12px 16px}
+  .small-btn{font-size:.92rem;padding:9px 12px}
+  .dgrid .btn{font-size:.95rem;padding:12px 8px}
+  .fab{font-size:1.08rem;padding:15px 24px}
+  .field > label,.field > .lab{font-size:.9rem;font-weight:700}
+  .sheet h2{font-size:1.2rem}
+  .proj h3{font-size:1.15rem}
+  .st-title{font-weight:700}
+  .num{flex:0 0 32px;height:32px;font-size:.95rem}
+  .note h3{font-size:1.12rem}
+  .note .nbody{font-size:.98rem;color:var(--ink)}
+  .note .nmeta{font-size:.86rem}
+  .note .needtxt{font-size:.95rem}
+  .count,.small{font-size:.88rem}
+  .arc{font-size:.88rem;padding:9px 12px}
+  .people label,.ntg label{font-size:1rem;padding:6px 12px}
+  .toast{font-size:1rem}
+}
 </style>
 </head>
 <body>
