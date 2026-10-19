@@ -172,6 +172,11 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .att .x{position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);cursor:pointer;font-size:14px;line-height:24px;padding:0}
 .upl{align-self:flex-start;font-size:.88rem}
 .report{background:var(--s-done-bg);border-radius:10px;padding:10px}
+.repbox{background:var(--s-done-bg);border-radius:10px;padding:10px;display:block}
+.repbox>summary{font-weight:700;cursor:pointer;padding:2px 0 6px}
+.repbox .field{margin-top:8px}
+.repbox textarea,.repbox input{width:100%;box-sizing:border-box}
+#r-prev{margin-top:6px;align-self:flex-start}
 .report > .lab{color:var(--s-done)!important;font-weight:700!important}
 .btn.done{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
 .rep{color:var(--s-done);font-weight:700}
@@ -667,6 +672,13 @@ function openSheet(id){
     <div class="field report"><span class="lab">完了報告の写真</span><div class="atts" id="att-report"></div>
       ${up?`<label class="btn upl">📷 完了報告の写真を追加<input type="file" id="in-report" accept="image/${"*"}" multiple hidden></label>`:""}</div>
     <p class="small" id="up-msg" hidden></p>
+    ${(()=>{const r=t.report||{};const has=r.work||r.staff||r.notes||r.remarks;return `<details class="field repbox" ${has||/清掃/.test(t.title||"")?"open":""}><summary>🧹 清掃報告書の内容（作業内容・人数・特記）</summary>
+      <div class="grid2"><div class="field"><label for="r-staff">作業人員</label><input id="r-staff" inputmode="numeric" placeholder="例：4" value="${esc(r.staff||"")}" ${ro?"disabled":""}></div></div>
+      <div class="field"><label for="r-work">作業内容</label><textarea id="r-work" rows="5" placeholder="例：廊下・階段の掃き掃除、エレベーター床・壁清掃、ドアの水拭き、草取り" ${ro?"disabled":""}>${esc(r.work||"")}</textarea>
+        ${ro?"":`<button type="button" class="btn" id="r-prev">前回と同じ作業内容を入れる</button>`}</div>
+      <div class="field"><label for="r-notes">特記（気づいたこと・不具合・入居者さんの私物など）</label><textarea id="r-notes" rows="3" ${ro?"disabled":""}>${esc(r.notes||"")}</textarea></div>
+      <div class="field"><label for="r-remarks">備考</label><textarea id="r-remarks" rows="2" ${ro?"disabled":""}>${esc(r.remarks||"")}</textarea></div>
+      <span class="small">ここに書いた内容と「完了報告の写真」で清掃報告書を作ります。</span></details>`})()}
     ${t.due?`<div class="calbox"><a class="btn cal" href="${calUrl(t)}" target="_blank" rel="noopener">📅 Googleカレンダーに追加</a><span class="small">追加したあと、Googleカレンダー側で「前日に通知」などを設定するとリマインダーになります。</span></div>`:""}
     <p class="small" id="e-who"></p>
     <div class="actions">
@@ -708,6 +720,10 @@ function openSheet(id){
   $("e-cancel").onclick=close;
   document.addEventListener("keydown",function k(e){if(e.key==="Escape"){close();document.removeEventListener("keydown",k)}});
   if($("e-addp"))$("e-addp").onclick=()=>{const n=$("e-newp").value.trim();if(!n)return;const box=$("e-people");const i=box.children.length;box.insertAdjacentHTML("beforeend",`<label><input type="checkbox" id="e-p${i}" value="${esc(n)}" checked>${esc(n)}</label>`);$("e-newp").value=""};
+  if($("r-prev"))$("r-prev").onclick=()=>{const pr=$("e-prop").value.trim();
+    const prev=tasks.filter(x=>x.id!==id&&x.report&&x.report.work&&(pr?x.property===pr||String(x.title).includes(pr):true)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    if(!prev){toast(pr?`「${pr}」の前回の作業内容が見つかりません`:"先に物件名を入れてください");return}
+    $("r-work").value=prev.report.work;if(!$("r-staff").value&&prev.report.staff)$("r-staff").value=prev.report.staff;toast("前回の作業内容を入れました")};
   if($("e-del"))$("e-del").onclick=async e=>{
     const b=e.currentTarget;if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="本当に削除する";return}
     try{apply(await api("apiDeleteTask",id));close();toast("削除しました")}catch(err){toast(errMsg(err))}};
@@ -715,7 +731,8 @@ function openSheet(id){
   $("form").addEventListener("submit",async e=>{
     e.preventDefault();if(ro)return;
     const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),
-      assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts};
+      assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
+      report:{staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(!body.title){$("e-title").focus();return}
     $("e-save").disabled=true;$("e-save").textContent="保存中…";
     try{
