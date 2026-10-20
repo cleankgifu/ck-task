@@ -385,6 +385,7 @@ function fillSelects(){
   $("f-status").value=F.status;
 }
 function people(){const s=new Set(PEOPLE.length?PEOPLE:BASE_PEOPLE);if(PEOPLE.length)BASE_PEOPLE.filter(p=>p==="情報共有"||p==="民泊").forEach(p=>s.add(p));tasks.forEach(t=>(t.assignees||[]).forEach(p=>s.add(p)));return [...s]}
+function clients(){const s=new Set();tasks.forEach(t=>t.client&&s.add(t.client));return [...s].sort()}
 function props(){const s=new Set(BASE_PROPS);tasks.forEach(t=>t.property&&s.add(t.property));return [...s]}
 function isDone(t){return DONE.has(t.status)}
 // タイトル先頭の①〜⑳を番号として読む（番号付きの依頼を1から順に並べる）
@@ -403,7 +404,7 @@ function visible(){
       if(F.quick==="week"&&!(dl!==null&&dl>=0&&dl<=7&&isOpen(t)))return false;
       if(F.quick==="doing"&&t.status!=="進行中")return false;
       if(F.quick==="todo"&&t.status!=="未着手")return false;}
-    if(q&&!`${t.title} ${t.property||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
+    if(q&&!`${t.title} ${t.property||""} ${t.client||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
     const da=a.due||"9999",dbb=b.due||"9999";if(da!==dbb)return da<dbb?-1:1;
@@ -461,6 +462,7 @@ function row(t){
           ${t.projectId?`<span class="projtag">▸ ${esc(t.projectName||"プロジェクト")} ${(t.step??0)+1}/${t.stepTotal||"?"}</span>`:""}
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
           ${t.property?`<span>🏢 ${esc(t.property)}</span>`:""}
+          ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
           ${t.category?`<span>${esc(t.category)}</span>`:""}
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}</span>
@@ -664,6 +666,7 @@ function openSheet(id){
       <div class="field"><label for="e-pri">優先度</label><select id="e-pri" ${ro?"disabled":""}>${[["","なし"],["High","高"],["Medium","中"],["Low","低"]].map(([v,l])=>`<option value="${v}" ${v===(t.priority||"")?"selected":""}>${l}</option>`).join("")}</select></div>
     </div>
     <div class="field"><label for="e-prop">物件名</label><input id="e-prop" list="propList" value="${esc(t.property||"")}" placeholder="例：パークタウンM" ${ro?"disabled":""}><datalist id="propList">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+    <div class="field"><label for="e-client">依頼人</label><input id="e-client" list="clientList" value="${esc(t.client||"")}" placeholder="例：東建 一宮支店 野口様" ${ro?"disabled":""}><datalist id="clientList">${clients().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
     <div class="field"><span class="lab">担当</span><div class="people" id="e-people">${people().map((p,i)=>`<label><input type="checkbox" id="e-p${i}" value="${esc(p)}" ${(t.assignees||[]).includes(p)?"checked":""} ${ro?"disabled":""}>${esc(p)}</label>`).join("")}</div>
       ${ro?"":`<div class="row"><input id="e-newp" placeholder="担当者を追加（名前）" style="flex:1"><button type="button" class="btn" id="e-addp">追加</button></div>`}</div>
     <div class="field"><label for="e-memo">メモ</label><textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea></div>
@@ -730,7 +733,7 @@ function openSheet(id){
   if(id&&t.updatedBy){const w=t.updatedAt?new Date(t.updatedAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):"";$("e-who").textContent=`最終更新：${t.updatedBy}${w?"（"+w+"）":""}`}
   $("form").addEventListener("submit",async e=>{
     e.preventDefault();if(ro)return;
-    const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),
+    const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),client:$("e-client").value.trim(),
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
       report:{staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(!body.title){$("e-title").focus();return}
