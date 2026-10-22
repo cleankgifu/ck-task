@@ -180,6 +180,10 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .report > .lab{color:var(--s-done)!important;font-weight:700!important}
 .btn.done{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
 .rep{color:var(--s-done);font-weight:700}
+.repreq{color:var(--s-wait);background:var(--s-wait-bg);border-radius:4px;padding:1px 7px;font-weight:700}
+.reqbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.reqbar .st{font-weight:700;font-size:.88rem}
+.vchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .calbox{display:flex;flex-direction:column;gap:4px}
 .small{font-size:.78rem;color:var(--muted)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.88rem;z-index:30}
@@ -393,6 +397,9 @@ function fillSelects(){
 }
 function people(){const s=new Set(PEOPLE.length?PEOPLE:BASE_PEOPLE);if(PEOPLE.length)BASE_PEOPLE.filter(p=>p==="情報共有"||p==="民泊").forEach(p=>s.add(p));tasks.forEach(t=>(t.assignees||[]).forEach(p=>s.add(p)));return [...s]}
 function clients(){const s=new Set();tasks.forEach(t=>t.client&&s.add(t.client));return [...s].sort()}
+// 業者名（一度入れた業者は一覧に出る。新しく使った順）
+function vendors(){const m=new Map();tasks.forEach(t=>{const v=t.report&&t.report.vendor;if(v)m.set(v,Math.max(m.get(v)||0,t.updatedAt||0))});return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0])}
+const isVendorTask=t=>/業者|手配|外注/.test(t.title||"")||!!(t.report&&t.report.vendor);
 function props(){const s=new Set(BASE_PROPS);tasks.forEach(t=>t.property&&s.add(t.property));return [...s]}
 function isDone(t){return DONE.has(t.status)}
 // タイトル先頭の①〜⑳を番号として読む（番号付きの依頼を1から順に並べる）
@@ -411,7 +418,7 @@ function visible(){
       if(F.quick==="week"&&!(dl!==null&&dl>=0&&dl<=7&&isOpen(t)))return false;
       if(F.quick==="doing"&&t.status!=="進行中")return false;
       if(F.quick==="todo"&&t.status!=="未着手")return false;}
-    if(q&&!`${t.title} ${t.property||""} ${t.client||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
+    if(q&&!`${t.title} ${t.property||""} ${t.client||""} ${(t.report&&t.report.vendor)||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
     const da=a.due||"9999",dbb=b.due||"9999";if(da!==dbb)return da<dbb?-1:1;
@@ -472,9 +479,11 @@ function row(t){
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
           ${t.property?`<span>🏢 ${esc(t.property)}</span>`:""}
           ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
+          ${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}
           ${t.category?`<span>${esc(t.category)}</span>`:""}
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
-          ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}</span>
+          ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}
+          ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
       </span></button>${canCin?`<button class="arc cin" data-cin="${esc(t.id)}">入力完了</button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
@@ -585,7 +594,7 @@ function renderProjects(){
       <ol class="steps">${steps.map(t=>`<li class="${DONE.has(t.status)?"s-done":t===cur?"s-cur":"s-wait"}"><button class="open" data-id="${esc(t.id)}">
         <span class="num">${DONE.has(t.status)?"✓":(t.step||0)+1}</span>
         <span class="main"><span class="st-title">${esc(t.title.replace(/^【.*?】/,""))}</span>
-        <span class="meta"><span>👤 ${esc((t.assignees||[]).join("・")||"未定")}</span>${t.due?`<span>${fmtDue(t.due)}</span>`:""}<span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span></span></span></button></li>`).join("")}</ol>
+        <span class="meta"><span>👤 ${esc((t.assignees||[]).join("・")||"未定")}</span>${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}${t.due?`<span>${fmtDue(t.due)}</span>`:""}<span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span></span></span></button></li>`).join("")}</ol>
       ${canWrite?`<div class="actions"><button class="btn small-btn" data-addstep="${esc(p.id)}">＋ 工程を追加</button><span class="spacer"></span><button class="btn danger small-btn" data-delproj="${esc(p.id)}">プロジェクトを削除</button></div>`:""}
     </article>`}).join("");
 }
@@ -676,6 +685,8 @@ function openSheet(id){
     </div>
     <div class="field"><label for="e-prop">物件名</label><input id="e-prop" list="propList" value="${esc(t.property||"")}" placeholder="例：パークタウンM" ${ro?"disabled":""}><datalist id="propList">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
     <div class="field"><label for="e-client">依頼人</label><input id="e-client" list="clientList" value="${esc(t.client||"")}" placeholder="例：東建 一宮支店 野口様" ${ro?"disabled":""}><datalist id="clientList">${clients().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+    ${isVendorTask(t)?`<div class="field"><label for="e-vendor">🔧 業者名</label><input id="e-vendor" list="vendorList" value="${esc((t.report&&t.report.vendor)||"")}" placeholder="例：正直屋" ${ro?"disabled":""}><datalist id="vendorList">${vendors().map(p=>`<option value="${esc(p)}">`).join("")}</datalist>
+      ${ro||!vendors().length?"":`<div class="vchips">${vendors().slice(0,12).map(v=>`<button type="button" class="chip" data-vendor="${esc(v)}">${esc(v)}</button>`).join("")}</div><span class="small">一度入れた業者はここに出ます。押すと入ります。</span>`}</div>`:""}
     <div class="field"><span class="lab">担当</span><div class="people" id="e-people">${people().map((p,i)=>`<label><input type="checkbox" id="e-p${i}" value="${esc(p)}" ${(t.assignees||[]).includes(p)?"checked":""} ${ro?"disabled":""}>${esc(p)}</label>`).join("")}</div>
       ${ro?"":`<div class="row"><input id="e-newp" placeholder="担当者を追加（名前）" style="flex:1"><button type="button" class="btn" id="e-addp">追加</button></div>`}</div>
     <div class="field"><label for="e-memo">メモ</label><textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea></div>
@@ -690,7 +701,10 @@ function openSheet(id){
         ${ro?"":`<button type="button" class="btn" id="r-prev">前回と同じ作業内容を入れる</button>`}</div>
       <div class="field"><label for="r-notes">特記（気づいたこと・不具合・入居者さんの私物など）</label><textarea id="r-notes" rows="3" ${ro?"disabled":""}>${esc(r.notes||"")}</textarea></div>
       <div class="field"><label for="r-remarks">備考</label><textarea id="r-remarks" rows="2" ${ro?"disabled":""}>${esc(r.remarks||"")}</textarea></div>
-      <span class="small">ここに書いた内容と「完了報告の写真」で清掃報告書を作ります。</span></details>`})()}
+      <span class="small">ここに書いた内容と「完了報告の写真」で清掃報告書を作ります。</span>
+      ${id?`<div class="reqbar">${r.req==="依頼中"?`<span class="st repreq">📄 作成依頼済み${r.reqAt?"（"+new Date(r.reqAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+"）":""}</span>${ro?"":`<button type="button" class="btn small-btn" id="r-cancelreq">依頼を取り消す</button>`}`
+        :r.req==="作成済"?`<span class="st rep">✅ 報告書 作成済み${r.pdf?"："+esc(r.pdf):""}</span>${ro?"":`<button type="button" class="btn small-btn" id="r-req">もう一度作成を依頼</button>`}`
+        :ro?"":`<button type="button" class="btn primary" id="r-req">📄 清掃報告書を作成依頼</button><span class="small">入力と写真がそろったら押してください。</span>`}</div>`:""}</details>`})()}
     ${t.due?`<div class="calbox"><a class="btn cal" href="${calUrl(t)}" target="_blank" rel="noopener">📅 Googleカレンダーに追加</a><span class="small">追加したあと、Googleカレンダー側で「前日に通知」などを設定するとリマインダーになります。</span></div>`:""}
     <p class="small" id="e-who"></p>
     <div class="actions">
@@ -732,6 +746,14 @@ function openSheet(id){
   $("e-cancel").onclick=close;
   document.addEventListener("keydown",function k(e){if(e.key==="Escape"){close();document.removeEventListener("keydown",k)}});
   if($("e-addp"))$("e-addp").onclick=()=>{const n=$("e-newp").value.trim();if(!n)return;const box=$("e-people");const i=box.children.length;box.insertAdjacentHTML("beforeend",`<label><input type="checkbox" id="e-p${i}" value="${esc(n)}" checked>${esc(n)}</label>`);$("e-newp").value=""};
+  let reqSet=null;
+  const vIn=$("e-vendor");
+  $("form").addEventListener("click",e=>{const v=e.target.closest("[data-vendor]");if(v&&vIn){vIn.value=v.dataset.vendor}});
+  if($("r-req"))$("r-req").onclick=()=>{
+    if(!atts.some(a=>a.kind==="report")){toast("先に「完了報告の写真」を追加してください");return}
+    if(!$("r-work").value.trim()){toast("作業内容を入れてください（「前回と同じ作業内容を入れる」も使えます）");$("r-work").focus();return}
+    reqSet="依頼中";$("form").requestSubmit()};
+  if($("r-cancelreq"))$("r-cancelreq").onclick=()=>{reqSet="";$("form").requestSubmit()};
   if($("r-prev"))$("r-prev").onclick=()=>{const pr=$("e-prop").value.trim();
     const prev=tasks.filter(x=>x.id!==id&&x.report&&x.report.work&&(pr?x.property===pr||String(x.title).includes(pr):true)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     if(!prev){toast(pr?`「${pr}」の前回の作業内容が見つかりません`:"先に物件名を入れてください");return}
@@ -744,14 +766,16 @@ function openSheet(id){
     e.preventDefault();if(ro)return;
     const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),client:$("e-client").value.trim(),
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
-      report:{staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
+      report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
+    if(vIn)body.report.vendor=vIn.value.trim();
+    if(reqSet!==null){body.report.req=reqSet;if(reqSet){body.report.reqAt=Date.now();body.report.reqBy=ME||""}else{delete body.report.reqAt;delete body.report.reqBy}}
     if(!body.title){$("e-title").focus();return}
     $("e-save").disabled=true;$("e-save").textContent="保存中…";
     try{
       const s=await api("apiSaveTask",id?{...body,id}:body);
       apply(s);close();
-      toast(s.handed?`保存しました。次の工程を ${s.handed} さんに回しました`:ARCH.has(body.status)?"アーカイブしました":"保存しました");
-    }catch(err){$("e-save").disabled=false;$("e-save").textContent="保存";toast(errMsg(err))}
+      toast(reqSet==="依頼中"?"清掃報告書の作成を依頼しました":reqSet===""?"依頼を取り消しました":s.handed?`保存しました。次の工程を ${s.handed} さんに回しました`:ARCH.has(body.status)?"アーカイブしました":"保存しました");
+    }catch(err){reqSet=null;$("e-save").disabled=false;$("e-save").textContent="保存";toast(errMsg(err))}
   });
   if(!ro&&!id)$("e-title").focus();
 }
