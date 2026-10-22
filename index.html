@@ -759,7 +759,8 @@ function stripId(t){const {id,...r}=t;return r}
 
 // ===== 賃貸革命入力（物件・内容・金額だけで登録 → 入力したら「入力完了」でアーカイブ） =====
 const CIN="賃貸革命入力";
-function isCin(t){return String(t.title||"").startsWith(CIN)}
+// 「賃貸革命入力」で始まるタスクと、タイトルに「賃貸革命」を含むプロジェクトの工程（例：請求（賃貸革命に入力））
+function isCin(t){return String(t.title||"").includes("賃貸革命")}
 function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function monthEnd(){const d=new Date();return ymd(new Date(d.getFullYear(),d.getMonth()+1,0))}
 function openCinSheet(){
