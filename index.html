@@ -287,6 +287,13 @@ img{max-width:100%}
   .people label,.ntg label{font-size:1rem;padding:6px 12px}
   .toast{font-size:1rem}
 }
+/* 賃貸革命入力 */
+.fabs{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:10;flex-wrap:wrap;justify-content:flex-end}
+.fabs .fab{position:static}
+.fab.alt{background:var(--surface);color:var(--ink);border:2px solid var(--accent)}
+.arc.cin{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
+.amt{display:flex;align-items:center;gap:6px}.amt input{flex:1;min-width:0}
+.preview{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-weight:700;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -343,7 +350,7 @@ img{max-width:100%}
   </div>
 </div>
 
-<button class="fab" id="add" disabled>＋ タスク追加</button>
+<div class="fabs"><button class="fab alt" id="addCin" disabled>🏠 賃貸革命入力</button><button class="fab" id="add" disabled>＋ タスク追加</button></div>
 <div id="sheetHost"></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -438,6 +445,7 @@ function render(){
   document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===VIEW)));
   $("taskView").hidden=VIEW!=="tasks";$("projView").hidden=VIEW!=="projects";$("noteView").hidden=VIEW!=="notes";noteBadge();$("who").hidden=VIEW==="notes";
   $("add").textContent=VIEW==="notes"?"＋ ノート追加":VIEW==="projects"?"＋ プロジェクト作成":"＋ タスク追加";
+  $("addCin").hidden=VIEW!=="tasks";
   if(!loaded)return;
   if(VIEW==="notes"){renderNotes();return}
   if(VIEW==="projects"){renderProjects();return}
@@ -454,6 +462,7 @@ function row(t){
     if(dl!==null&&isOpen(t)){if(dl<0){cls="over";tag="期限切れ"}else if(dl===0){cls="over";tag="今日"}else if(dl<=3){cls="soon";tag=`あと${dl}日`}}
     const memo=(t.memo||"").split(/\n/)[0];
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
+    const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     return `<li class="task ${DONE.has(t.status)?"is-done":""}"><button class="open" data-id="${esc(t.id)}">
       <span class="due ${cls}">${t.due?fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>
       <span class="main">
@@ -467,7 +476,7 @@ function row(t){
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
-      </span></button>${canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
+      </span></button>${canCin?`<button class="arc cin" data-cin="${esc(t.id)}">入力完了</button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
 
 var NDEPTS=["全体","管理","工事","事務","民泊清掃"];
@@ -747,6 +756,54 @@ function openSheet(id){
   if(!ro&&!id)$("e-title").focus();
 }
 function stripId(t){const {id,...r}=t;return r}
+
+// ===== 賃貸革命入力（物件・内容・金額だけで登録 → 入力したら「入力完了」でアーカイブ） =====
+const CIN="賃貸革命入力";
+function isCin(t){return String(t.title||"").startsWith(CIN)}
+function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function monthEnd(){const d=new Date();return ymd(new Date(d.getFullYear(),d.getMonth()+1,0))}
+function openCinSheet(){
+  const ps=people().filter(p=>p!=="情報共有"&&p!=="民泊");
+  const def=ps.includes("森")?"森":(ME||"");
+  $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><form class="sheet" id="cform" role="dialog" aria-modal="true" aria-label="賃貸革命入力">
+    <h2>🏠 賃貸革命入力</h2>
+    <div class="field"><label for="c-prop">物件・部屋番号</label><input id="c-prop" list="propListC" required placeholder="例：ミフク201 ／ フォーブルマスヤ 共用部"><datalist id="propListC">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+    <div class="field"><label for="c-what">内容</label><input id="c-what" required placeholder="例：コンセントカバー劣化により交換"></div>
+    <div class="grid2">
+      <div class="field"><label for="c-amt">金額</label><span class="amt"><input id="c-amt" type="number" inputmode="numeric" min="0" step="1" placeholder="5000">円</span></div>
+      <div class="field"><label for="c-note">補足（任意）</label><input id="c-note" placeholder="例：廃棄料込"></div>
+      <div class="field"><label for="c-who">担当</label><select id="c-who">${ps.map(p=>`<option ${p===def?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+      <div class="field"><label for="c-due">期限</label><input id="c-due" type="date"></div>
+    </div>
+    <div class="row"><button type="button" class="chip" id="c-me">期限：月末</button><button type="button" class="chip" id="c-none">期限なし</button></div>
+    <div class="field"><span class="lab">登録されるタスク名</span><div class="preview" id="c-prev">賃貸革命入力</div></div>
+    <p class="small">賃貸革命に入力し終わったら、一覧の「入力完了」を押すとアーカイブに入ります。</p>
+    <div class="actions"><span class="spacer"></span><button type="button" class="btn" id="c-cancel">キャンセル</button><button type="submit" class="btn primary" id="c-save">登録する</button></div>
+  </form></div>`;
+  const close=()=>{$("sheetHost").innerHTML=""};
+  const val=()=>{const prop=$("c-prop").value.trim(),what=$("c-what").value.trim(),note=$("c-note").value.trim();
+    const n=$("c-amt").value===""?null:Math.round(Number($("c-amt").value));
+    const amt=n===null||isNaN(n)?"":n.toLocaleString("ja-JP");
+    const title=[CIN,prop,what,amt&&`${amt}円${note?`（${note}）`:""}`].filter(Boolean).join(" ")+(!amt&&note?`（${note}）`:"");
+    const memo=`賃貸革命に入力：${what}${amt?`　¥${amt}`:""}${note?`（${note}）`:""}`;
+    return {prop,what,title,memo}};
+  $("cform").addEventListener("input",()=>{$("c-prev").textContent=val().title});
+  $("c-me").onclick=()=>{$("c-due").value=monthEnd()};
+  $("c-none").onclick=()=>{$("c-due").value=""};
+  $("bg").addEventListener("click",e=>{if(e.target.id==="bg")close()});
+  $("c-cancel").onclick=close;
+  $("cform").addEventListener("submit",async e=>{
+    e.preventDefault();const v=val();
+    if(!v.prop){$("c-prop").focus();return}
+    if(!v.what){$("c-what").focus();return}
+    $("c-save").disabled=true;$("c-save").textContent="登録中…";
+    try{
+      apply(await api("apiSaveTask",{title:v.title,status:"未着手",assignees:$("c-who").value?[$("c-who").value]:[],property:v.prop,category:"事務",priority:"",due:$("c-due").value||"",memo:v.memo,attachments:[]}));
+      close();toast("賃貸革命入力を登録しました");
+    }catch(err){$("c-save").disabled=false;$("c-save").textContent="登録する";toast(errMsg(err))}
+  });
+  $("c-prop").focus();
+}
 function fail(m){const e=new Error(m);e.userMsg=m;return e}
 async function prepFile(f){
   const name=f.name||"file";const ext=(name.split(".").pop()||"").toLowerCase();
@@ -789,6 +846,9 @@ $("me").addEventListener("change",e=>setMe(e.target.value));
 $("askPick").addEventListener("click",e=>{const b=e.target.closest("[data-me]");if(b)setMe(b.dataset.me)});
 $("summary").addEventListener("click",e=>{const b=e.target.closest("[data-quick]");if(!b)return;F.quick=F.quick===b.dataset.quick?"":b.dataset.quick;F.status="open";$("f-status").value="open";render()});
 $("list").addEventListener("click",async e=>{
+  const ci=e.target.closest("[data-cin]");
+  if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;ci.disabled=true;
+    try{apply(await api("apiSaveTask",{id:t.id,status:"完了アーカイブ"}));toast("入力完了 → アーカイブに入れました")}catch(err){ci.disabled=false;toast(errMsg(err))}return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;a.disabled=true;
     try{apply(await api("apiSaveTask",{id:t.id,status:arcStatus(t.status)}));toast("アーカイブしました")}catch(err){a.disabled=false;toast(errMsg(err))}return}
@@ -801,6 +861,7 @@ $("projList").addEventListener("click",async e=>{
     try{apply(await api("apiDeleteProject",pid));toast("プロジェクトを削除しました")}catch(err){toast(errMsg(err));d.disabled=false}return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b)return;VIEW=b.dataset.view;try{localStorage.setItem("ckview",VIEW)}catch(_){}render()});
+$("addCin").addEventListener("click",openCinSheet);
 $("add").addEventListener("click",()=>VIEW==="notes"?openNote(null):VIEW==="projects"?openProjectSheet():openSheet(null));
 $("noteList").addEventListener("click",e=>{const b=e.target.closest("[data-note]");if(b)openNote(b.dataset.note)});
 $("nq").addEventListener("input",e=>{NQ=e.target.value;renderNotes()});
@@ -823,7 +884,7 @@ fillSelects();render();
     const s=await api("apiLoad");
     if(!ME&&s.me&&s.me.name){ME=s.me.name;F.who=ME;try{localStorage.setItem("ckme",ME)}catch(_){}}
     apply(s);
-    $("add").disabled=false;
+    $("add").disabled=false;$("addCin").disabled=!canWrite;
     break;
   }catch(err){
     const em=String(err&&err.message||err);
