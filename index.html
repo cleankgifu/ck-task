@@ -177,6 +177,8 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .repbox .field{margin-top:8px}
 .repbox textarea,.repbox input{width:100%;box-sizing:border-box}
 #r-prev{margin-top:6px;align-self:flex-start}
+.shubox{background:var(--s-doing-bg)}
+.shubox .reqbar{border-top-color:var(--line)}
 .report > .lab{color:var(--s-done)!important;font-weight:700!important}
 .btn.done{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
 .rep{color:var(--s-done);font-weight:700}
@@ -483,7 +485,8 @@ function row(t){
           ${t.category?`<span>${esc(t.category)}</span>`:""}
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}
-          ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}</span>
+          ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
+          ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
       </span></button>${canCin?`<button class="arc cin" data-cin="${esc(t.id)}">入力完了</button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
@@ -705,6 +708,19 @@ function openSheet(id){
       ${id?`<div class="reqbar">${r.req==="依頼中"?`<span class="st repreq">📄 作成依頼済み${r.reqAt?"（"+new Date(r.reqAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+"）":""}</span>${ro?"":`<button type="button" class="btn small-btn" id="r-cancelreq">依頼を取り消す</button>`}`
         :r.req==="作成済"?`<span class="st rep">✅ 報告書 作成済み${r.pdf?"："+esc(r.pdf):""}</span>${ro?"":`<button type="button" class="btn small-btn" id="r-req">もう一度作成を依頼</button>`}`
         :ro?"":`<button type="button" class="btn primary" id="r-req">📄 清掃報告書を作成依頼</button><span class="small">入力と写真がそろったら押してください。</span>`}</div>`:""}</details>`})()}
+    ${(()=>{const r=t.report||{};const has=r.sWork||r.sCause||r.sReq;const isRep=/修繕|修理|交換|補修|工事|設置|取付|取替|球切れ|水漏れ/.test(t.title||"")||t.category==="工事";return `<details class="field repbox shubox" ${has||isRep?"open":""}><summary>🔧 修繕完了報告書の内容</summary>
+      <div class="grid2"><div class="field"><label for="r-sdate">作業日</label><input id="r-sdate" type="date" value="${esc(r.sDate||"")}" ${ro?"disabled":""}></div>
+        <div class="field"><label for="r-smail">依頼主のメール</label><input id="r-smail" type="email" inputmode="email" placeholder="例：takeda@example.jp" value="${esc(r.sMail||"")}" ${ro?"disabled":""}></div></div>
+      <div class="field"><label for="r-scause">作業前の状況・原因</label><textarea id="r-scause" rows="3" placeholder="例：704号室 トイレタンクの水が止まらない。ボールタップの劣化" ${ro?"disabled":""}>${esc(r.sCause||"")}</textarea></div>
+      <div class="field"><label for="r-swork">作業内容</label><textarea id="r-swork" rows="4" placeholder="例：ボールタップを新品に交換し、水位を調整。漏れがないことを確認" ${ro?"disabled":""}>${esc(r.sWork||"")}</textarea></div>
+      <div class="field"><label for="r-sparts">使用部材・数量</label><input id="r-sparts" placeholder="例：ボールタップ（TOTO THYS4A）1個" value="${esc(r.sParts||"")}" ${ro?"disabled":""}></div>
+      <div class="field"><label for="r-snotes">特記・今後の注意</label><textarea id="r-snotes" rows="2" placeholder="例：ほかの部屋も同年式のため、今後交換の可能性あり" ${ro?"disabled":""}>${esc(r.sNotes||"")}</textarea></div>
+      <div class="field"><span class="lab">作業前の写真</span><div class="atts" id="att-before"></div>
+        ${up?`<label class="btn upl">📷 作業前の写真を追加<input type="file" id="in-before" accept="image/${"*"}" multiple hidden></label>`:""}</div>
+      <span class="small">作業後の写真は上の「完了報告の写真」に入れてください。依頼人・物件名・この欄・写真で修繕完了報告書を作り、依頼主のメールあての下書き（PDF添付）まで用意します。送信は吉田さんが確認してから行います。</span>
+      ${id?`<div class="reqbar">${r.sReq==="依頼中"?`<span class="st repreq">📄 作成依頼済み${r.sReqAt?"（"+new Date(r.sReqAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+"）":""}</span>${ro?"":`<button type="button" class="btn small-btn" id="s-cancelreq">依頼を取り消す</button>`}`
+        :r.sReq==="作成済"?`<span class="st rep">✅ 修繕報告書 作成済み${r.sPdf?"："+esc(r.sPdf):""}</span>${ro?"":`<button type="button" class="btn small-btn" id="s-req">もう一度作成を依頼</button>`}`
+        :ro?"":`<button type="button" class="btn primary" id="s-req">📄 修繕完了報告書を作成依頼</button><span class="small">入力と写真がそろったら押してください。</span>`}</div>`:""}</details>`})()}
     ${t.due?`<div class="calbox"><a class="btn cal" href="${calUrl(t)}" target="_blank" rel="noopener">📅 Googleカレンダーに追加</a><span class="small">追加したあと、Googleカレンダー側で「前日に通知」などを設定するとリマインダーになります。</span></div>`:""}
     <p class="small" id="e-who"></p>
     <div class="actions">
@@ -714,7 +730,7 @@ function openSheet(id){
       ${ro?"":`<button type="submit" class="btn primary" id="e-save">保存</button>`}
     </div></form></div>`;
   const close=()=>{$("sheetHost").innerHTML=""};
-  const drawAtts=()=>{for(const k of ["file","report"]){const box=$("att-"+k);if(!box)continue;const list=atts.filter(a=>a.kind===k);
+  const drawAtts=()=>{for(const k of ["file","report","before"]){const box=$("att-"+k);if(!box)continue;const list=atts.filter(a=>a.kind===k);
     box.innerHTML=list.length?list.map(a=>{const u="https:/"+"/drive.google.com/file/d/"+encodeURIComponent(a.id)+"/view";const img=String(a.type).startsWith("image/");
       return `<div class="att">${img?`<a href="${u}" target="_blank" rel="noopener"><img src="${THUMBS[a.id]||""}" data-thumb="${esc(a.id)}" alt="${esc(a.name)}"></a>`:`<a class="doc" href="${u}" target="_blank" rel="noopener">📄 ${esc(a.name)}</a>`}${up?`<button type="button" class="x" data-rm="${esc(a.id)}" aria-label="${esc(a.name)}を外す">×</button>`:""}</div>`}).join("")
       :`<span class="small">${k==="report"?"まだありません":"なし"}</span>`}
@@ -738,6 +754,7 @@ function openSheet(id){
   };
   if($("in-file"))$("in-file").addEventListener("change",e=>{handle([...e.target.files],"file");e.target.value=""});
   if($("in-report"))$("in-report").addEventListener("change",e=>{handle([...e.target.files],"report");e.target.value=""});
+  if($("in-before"))$("in-before").addEventListener("change",e=>{handle([...e.target.files],"before");e.target.value=""});
   $("form").addEventListener("click",async e=>{const b=e.target.closest("[data-rm]");if(!b)return;
     if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="?";b.setAttribute("aria-label","もう一度押すと外します");return}
     const rid=b.dataset.rm;atts=atts.filter(a=>a.id!==rid);drawAtts();await saveAtts();api("apiRemoveFile",rid).catch(()=>{})});
@@ -754,6 +771,13 @@ function openSheet(id){
     if(!$("r-work").value.trim()){toast("作業内容を入れてください（「前回と同じ作業内容を入れる」も使えます）");$("r-work").focus();return}
     reqSet="依頼中";$("form").requestSubmit()};
   if($("r-cancelreq"))$("r-cancelreq").onclick=()=>{reqSet="";$("form").requestSubmit()};
+  let sReqSet=null;
+  if($("s-req"))$("s-req").onclick=()=>{
+    if(!atts.some(a=>a.kind==="report")){toast("先に作業後の写真を「完了報告の写真」に追加してください");return}
+    if(!$("r-swork").value.trim()){toast("作業内容を入れてください");$("r-swork").focus();return}
+    const m=$("r-smail").value.trim();if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){toast("依頼主のメールアドレスを確認してください");$("r-smail").focus();return}
+    sReqSet="依頼中";$("form").requestSubmit()};
+  if($("s-cancelreq"))$("s-cancelreq").onclick=()=>{sReqSet="";$("form").requestSubmit()};
   if($("r-prev"))$("r-prev").onclick=()=>{const pr=$("e-prop").value.trim();
     const prev=tasks.filter(x=>x.id!==id&&x.report&&x.report.work&&(pr?x.property===pr||String(x.title).includes(pr):true)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
     if(!prev){toast(pr?`「${pr}」の前回の作業内容が見つかりません`:"先に物件名を入れてください");return}
@@ -768,14 +792,16 @@ function openSheet(id){
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
       report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(vIn)body.report.vendor=vIn.value.trim();
+    if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
+    if(sReqSet!==null){body.report.sReq=sReqSet;if(sReqSet){body.report.sReqAt=Date.now();body.report.sReqBy=ME||""}else{delete body.report.sReqAt;delete body.report.sReqBy}}
     if(reqSet!==null){body.report.req=reqSet;if(reqSet){body.report.reqAt=Date.now();body.report.reqBy=ME||""}else{delete body.report.reqAt;delete body.report.reqBy}}
     if(!body.title){$("e-title").focus();return}
     $("e-save").disabled=true;$("e-save").textContent="保存中…";
     try{
       const s=await api("apiSaveTask",id?{...body,id}:body);
       apply(s);close();
-      toast(reqSet==="依頼中"?"清掃報告書の作成を依頼しました":reqSet===""?"依頼を取り消しました":s.handed?`保存しました。次の工程を ${s.handed} さんに回しました`:ARCH.has(body.status)?"アーカイブしました":"保存しました");
-    }catch(err){reqSet=null;$("e-save").disabled=false;$("e-save").textContent="保存";toast(errMsg(err))}
+      toast(reqSet==="依頼中"?"清掃報告書の作成を依頼しました":sReqSet==="依頼中"?"修繕完了報告書の作成を依頼しました":reqSet===""||sReqSet===""?"依頼を取り消しました":s.handed?`保存しました。次の工程を ${s.handed} さんに回しました`:ARCH.has(body.status)?"アーカイブしました":"保存しました");
+    }catch(err){reqSet=null;sReqSet=null;$("e-save").disabled=false;$("e-save").textContent="保存";toast(errMsg(err))}
   });
   if(!ro&&!id)$("e-title").focus();
 }
