@@ -819,7 +819,10 @@ function openCinSheet(){
   const def=ps.includes("森")?"森":(ME||"");
   $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><form class="sheet" id="cform" role="dialog" aria-modal="true" aria-label="賃貸革命入力">
     <h2>🏠 賃貸革命入力</h2>
-    <div class="field"><label for="c-prop">物件・部屋番号</label><input id="c-prop" list="propListC" required placeholder="例：ミフク201 ／ フォーブルマスヤ 共用部"><datalist id="propListC">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+    <div class="grid2">
+      <div class="field"><label for="c-prop">物件名</label><input id="c-prop" list="propListC" required placeholder="例：メゾンミフク"><datalist id="propListC">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+      <div class="field"><label for="c-room">部屋番号</label><input id="c-room" list="roomListC" placeholder="例：201 ／ 共用部"><datalist id="roomListC"><option value="共用部"></datalist></div>
+    </div>
     <div class="field"><label for="c-what">内容</label><input id="c-what" required placeholder="例：コンセントカバー劣化により交換"></div>
     <div class="grid2">
       <div class="field"><label for="c-amt">金額</label><span class="amt"><input id="c-amt" type="number" inputmode="numeric" min="0" step="1" placeholder="5000">円</span></div>
@@ -833,12 +836,12 @@ function openCinSheet(){
     <div class="actions"><span class="spacer"></span><button type="button" class="btn" id="c-cancel">キャンセル</button><button type="submit" class="btn primary" id="c-save">登録する</button></div>
   </form></div>`;
   const close=()=>{$("sheetHost").innerHTML=""};
-  const val=()=>{const prop=$("c-prop").value.trim(),what=$("c-what").value.trim(),note=$("c-note").value.trim();
+  const val=()=>{const prop=$("c-prop").value.trim(),r0=$("c-room").value.trim(),room=/^[0-9０-９A-Za-z\-－]+$/.test(r0)?r0+"号室":r0,what=$("c-what").value.trim(),note=$("c-note").value.trim();
     const n=$("c-amt").value===""?null:Math.round(Number($("c-amt").value));
     const amt=n===null||isNaN(n)?"":n.toLocaleString("ja-JP");
     const n1=note.split(/\n/).map(x=>x.trim()).filter(Boolean);const short=n1.length===1&&n1[0].length<=20?n1[0]:"";
-    const title=CIN+[prop,what,amt&&`${amt}円${short?`（${short}）`:""}`].filter(Boolean).join(" ")+(!amt&&short?`（${short}）`:"")+(note&&!short?"（内訳あり）":"");
-    const memo=`賃貸革命に入力：${what}${amt?`　¥${amt}`:""}${note?(short?`（${short}）`:`\n【内訳・補足】\n${note}`):""}`;
+    const title=CIN+[prop+(room?" "+room:""),what,amt&&`${amt}円${short?`（${short}）`:""}`].filter(Boolean).join(" ")+(!amt&&short?`（${short}）`:"")+(note&&!short?"（内訳あり）":"");
+    const memo=`賃貸革命に入力：${prop}${room?" "+room:""}　${what}${amt?`　¥${amt}`:""}${note?(short?`（${short}）`:`\n【内訳・補足】\n${note}`):""}`;
     return {prop,what,title,memo}};
   $("cform").addEventListener("input",()=>{$("c-prev").textContent=val().title});
   $("c-me").onclick=()=>{$("c-due").value=monthEnd()};
