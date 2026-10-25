@@ -297,6 +297,7 @@ img{max-width:100%}
 .fabs{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:10;flex-wrap:wrap;justify-content:flex-end}
 .fabs .fab{position:static}
 .fab.alt{background:var(--surface);color:var(--ink);border:2px solid var(--accent)}
+#c-note{min-height:7.5em;resize:vertical;font-size:1rem;line-height:1.6}
 .arc.cin{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
 .amt{display:flex;align-items:center;gap:6px}.amt input{flex:1;min-width:0}
 .preview{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-weight:700;overflow-wrap:anywhere}
@@ -808,7 +809,7 @@ function openSheet(id){
 function stripId(t){const {id,...r}=t;return r}
 
 // ===== 賃貸革命入力（物件・内容・金額だけで登録 → 入力したら「入力完了」でアーカイブ） =====
-const CIN="賃貸革命入力";
+const CIN="【賃貸革命入力】";
 // 「賃貸革命入力」で始まるタスクと、タイトルに「賃貸革命」を含むプロジェクトの工程（例：請求（賃貸革命に入力））
 function isCin(t){return String(t.title||"").includes("賃貸革命")}
 function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -822,12 +823,12 @@ function openCinSheet(){
     <div class="field"><label for="c-what">内容</label><input id="c-what" required placeholder="例：コンセントカバー劣化により交換"></div>
     <div class="grid2">
       <div class="field"><label for="c-amt">金額</label><span class="amt"><input id="c-amt" type="number" inputmode="numeric" min="0" step="1" placeholder="5000">円</span></div>
-      <div class="field"><label for="c-note">補足（任意）</label><input id="c-note" placeholder="例：廃棄料込"></div>
       <div class="field"><label for="c-who">担当</label><select id="c-who">${ps.map(p=>`<option ${p===def?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
       <div class="field"><label for="c-due">期限</label><input id="c-due" type="date"></div>
     </div>
+    <div class="field"><label for="c-note">補足・内訳（任意）</label><textarea id="c-note" rows="5" placeholder="例：&#10;部材 3,000円&#10;作業費 2,000円&#10;廃棄料込"></textarea></div>
     <div class="row"><button type="button" class="chip" id="c-me">期限：月末</button><button type="button" class="chip" id="c-none">期限なし</button></div>
-    <div class="field"><span class="lab">登録されるタスク名</span><div class="preview" id="c-prev">賃貸革命入力</div></div>
+    <div class="field"><span class="lab">登録されるタスク名</span><div class="preview" id="c-prev">【賃貸革命入力】</div></div>
     <p class="small">賃貸革命に入力し終わったら、一覧の「入力完了」を押すとアーカイブに入ります。</p>
     <div class="actions"><span class="spacer"></span><button type="button" class="btn" id="c-cancel">キャンセル</button><button type="submit" class="btn primary" id="c-save">登録する</button></div>
   </form></div>`;
@@ -835,8 +836,9 @@ function openCinSheet(){
   const val=()=>{const prop=$("c-prop").value.trim(),what=$("c-what").value.trim(),note=$("c-note").value.trim();
     const n=$("c-amt").value===""?null:Math.round(Number($("c-amt").value));
     const amt=n===null||isNaN(n)?"":n.toLocaleString("ja-JP");
-    const title=[CIN,prop,what,amt&&`${amt}円${note?`（${note}）`:""}`].filter(Boolean).join(" ")+(!amt&&note?`（${note}）`:"");
-    const memo=`賃貸革命に入力：${what}${amt?`　¥${amt}`:""}${note?`（${note}）`:""}`;
+    const n1=note.split(/\n/).map(x=>x.trim()).filter(Boolean);const short=n1.length===1&&n1[0].length<=20?n1[0]:"";
+    const title=CIN+[prop,what,amt&&`${amt}円${short?`（${short}）`:""}`].filter(Boolean).join(" ")+(!amt&&short?`（${short}）`:"")+(note&&!short?"（内訳あり）":"");
+    const memo=`賃貸革命に入力：${what}${amt?`　¥${amt}`:""}${note?(short?`（${short}）`:`\n【内訳・補足】\n${note}`):""}`;
     return {prop,what,title,memo}};
   $("cform").addEventListener("input",()=>{$("c-prev").textContent=val().title});
   $("c-me").onclick=()=>{$("c-due").value=monthEnd()};
