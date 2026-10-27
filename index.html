@@ -167,6 +167,11 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .people label{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.85rem;cursor:pointer}
 .people label:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
 .people input{margin:0;accent-color:var(--accent)}
+.dkrow{margin-bottom:6px}
+.dkrow label:has(input:checked){background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.due.asap{color:var(--over);font-family:var(--f-body);font-weight:700;font-size:.78rem}
+.due.later{color:var(--muted);font-family:var(--f-body);font-size:.78rem}
+.due .dkl{display:block;font-style:normal;font-family:var(--f-body);font-size:.7rem;font-weight:700}
 .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{font:inherit;font-weight:700;border-radius:8px;padding:9px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-block}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -376,6 +381,12 @@ const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち
 const DONE=new Set(["完了","確認済み","完了 請求書作成","完了アーカイブ","確認済みアーカイブ"]);
 const ARCH=new Set(["完了アーカイブ","確認済みアーカイブ"]);
 const WAITING="前工程待ち";
+// いつやるか：施工日／締切日（日付あり）・なるべく早く／時間ができたら（日付なし）。report.dk に入れる
+const DKS=["施工日","締切日","なるべく早く","時間ができたら"];
+const NODATE=new Set(["なるべく早く","時間ができたら"]);
+const dkOf=t=>{const k=t.report&&t.report.dk;return DKS.includes(k)?k:"締切日"};
+// 完了した日を report.doneAt に入れる（作業記録シートで使う）
+function withDone(t,status,rep){const r={...(rep||t.report||{})};if(DONE.has(status)){if(!r.doneAt)r.doneAt=ymd(new Date())}else delete r.doneAt;return r}
 const PRESETS={
   "工事":["見積作成","施工","請求書作成"],
   "修繕・手配":["現地確認","業者手配","作業","完了報告","請求書作成"],
@@ -443,7 +454,7 @@ function visible(){
     const oa=ordOf(a),ob=ordOf(b);
     if(oa!==null&&ob!==null&&oa!==ob)return oa-ob;
     if((oa===null)!==(ob===null))return oa===null?-1:1; // 並べ替えていない新しいタスクは上に出す
-    const da=a.due||"9999",dbb=b.due||"9999";if(da!==dbb)return da<dbb?-1:1;
+    const dkey=t=>{const k=dkOf(t);return k==="なるべく早く"?"0000":k==="時間ができたら"?"99999":(t.due||"9999")};const da=dkey(a),dbb=dkey(b);if(da!==dbb)return da<dbb?-1:1;
     const pr={High:0,Medium:1,Low:2};const pa=pr[a.priority]??3,pb=pr[b.priority]??3;if(pa!==pb)return pa-pb;
     const na=circ(a.title),nb=circ(b.title);
     if(na&&nb)return na-nb;
@@ -493,14 +504,15 @@ function render(){
   $("list").innerHTML=(showSplit?head+rows(now)+mid+rows(wt):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
 }
 function row(t,i,n){
-    const dl=daysLeft(t.due);let cls="",tag="";
-    if(dl!==null&&isOpen(t)){if(dl<0){cls="over";tag="期限切れ"}else if(dl===0){cls="over";tag="今日"}else if(dl<=3){cls="soon";tag=`あと${dl}日`}}
+    const dl=daysLeft(t.due);let cls="",tag="";const dk=dkOf(t);
+    if(dl!==null&&isOpen(t)){if(dl<0){cls="over";tag=dk==="施工日"?"施工日過ぎ":"期限切れ"}else if(dl===0){cls="over";tag="今日"}else if(dl<=3){cls="soon";tag=`あと${dl}日`}}
+    const dueHtml=dk==="なるべく早く"?`<span class="due asap">なるべく<br>早く</span>`:dk==="時間ができたら"?`<span class="due later">時間が<br>できたら</span>`:`<span class="due ${cls}">${t.due?`<em class="dkl">${dk==="施工日"?"施工":"締切"}</em>`+fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>`;
     const memo=(t.memo||"").split(/\n/)[0];
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     const mv=REORDER&&canWrite&&!DONE.has(t.status)&&i!==undefined;
     return `<li class="task ${DONE.has(t.status)?"is-done":""} ${grp(t)===1?"is-wait":""}"><button class="open" data-id="${esc(t.id)}">
-      <span class="due ${cls}">${t.due?fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>
+      ${dueHtml}
       <span class="main">
         <span class="title ${t.priority==="High"?"hi":""}">${esc(t.title)}</span>
         <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>
@@ -707,9 +719,10 @@ function openSheet(id){
       <button type="button" class="btn chk ghost" data-set="確認済みアーカイブ">確認してアーカイブ</button></div>
       <span class="small">「完了」「確認した」はリーダーが見られるように一覧に残ります。アーカイブを選ぶと一覧から外れます。</span></div>`:""}
     <div class="field"><label for="e-title">タスク名</label><textarea id="e-title" class="title-in" rows="3" required ${ro?"disabled":""}>${esc(t.title)}</textarea></div>
+    <div class="field"><span class="lab">いつ？</span><div class="people dkrow" id="e-dk">${DKS.map(k=>`<label><input type="radio" name="e-dk" value="${k}" ${k===dkOf(t)?"checked":""} ${ro?"disabled":""}>${k}</label>`).join("")}</div>
+      <input id="e-due" type="date" aria-label="日付" value="${esc(t.due||"")}" ${NODATE.has(dkOf(t))?"hidden":""} ${ro?"disabled":""}></div>
     <div class="grid2">
       <div class="field"><label for="e-status">ステータス</label><select id="e-status" ${ro?"disabled":""}>${STATUSES.map(s=>`<option ${s===t.status?"selected":""}>${s}</option>`).join("")}</select></div>
-      <div class="field"><label for="e-due">期限</label><input id="e-due" type="date" value="${esc(t.due||"")}" ${ro?"disabled":""}></div>
       <div class="field"><label for="e-cat">カテゴリ</label><select id="e-cat" ${ro?"disabled":""}><option value="">なし</option>${CATS.map(c=>`<option ${c===t.category?"selected":""}>${c}</option>`).join("")}</select></div>
       <div class="field"><label for="e-pri">優先度</label><select id="e-pri" ${ro?"disabled":""}>${[["","なし"],["High","高"],["Medium","中"],["Low","低"]].map(([v,l])=>`<option value="${v}" ${v===(t.priority||"")?"selected":""}>${l}</option>`).join("")}</select></div>
     </div>
@@ -785,6 +798,7 @@ function openSheet(id){
   $("form").addEventListener("click",async e=>{const b=e.target.closest("[data-rm]");if(!b)return;
     if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="?";b.setAttribute("aria-label","もう一度押すと外します");return}
     const rid=b.dataset.rm;atts=atts.filter(a=>a.id!==rid);drawAtts();await saveAtts();api("apiRemoveFile",rid).catch(()=>{})});
+  document.querySelectorAll("#e-dk input").forEach(r=>r.onchange=()=>{$("e-due").hidden=NODATE.has(r.value);if(!$("e-due").hidden&&!$("e-due").value)$("e-due").focus()});
   document.querySelectorAll("#form [data-set]").forEach(b=>b.onclick=()=>{$("e-status").value=b.dataset.set;$("form").requestSubmit()});
   $("bg").addEventListener("click",e=>{if(e.target.id==="bg")close()});
   $("e-cancel").onclick=close;
@@ -819,6 +833,8 @@ function openSheet(id){
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
       report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(vIn)body.report.vendor=vIn.value.trim();
+    const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";
+    body.report=withDone(t,body.status,body.report);
     if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
     if(sReqSet!==null){body.report.sReq=sReqSet;if(sReqSet){body.report.sReqAt=Date.now();body.report.sReqBy=ME||""}else{delete body.report.sReqAt;delete body.report.sReqBy}}
     if(reqSet!==null){body.report.req=reqSet;if(reqSet){body.report.reqAt=Date.now();body.report.reqBy=ME||""}else{delete body.report.reqAt;delete body.report.reqBy}}
@@ -957,10 +973,10 @@ $("list").addEventListener("click",async e=>{
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
   if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;ci.disabled=true;
-    try{apply(await api("apiSaveTask",{id:t.id,status:"完了アーカイブ"}));toast("入力完了 → アーカイブに入れました")}catch(err){ci.disabled=false;toast(errMsg(err))}return}
+    try{apply(await api("apiSaveTask",{id:t.id,status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")}));toast("入力完了 → アーカイブに入れました")}catch(err){ci.disabled=false;toast(errMsg(err))}return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;a.disabled=true;
-    try{apply(await api("apiSaveTask",{id:t.id,status:arcStatus(t.status)}));toast("アーカイブしました")}catch(err){a.disabled=false;toast(errMsg(err))}return}
+    try{apply(await api("apiSaveTask",{id:t.id,status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))}));toast("アーカイブしました")}catch(err){a.disabled=false;toast(errMsg(err))}return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
 $("projList").addEventListener("click",async e=>{
   const as=e.target.closest("[data-addstep]");if(as){openAddStep(as.dataset.addstep);return}
