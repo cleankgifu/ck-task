@@ -609,15 +609,35 @@ function openAddStep(pid){
   h+='<div class="field"><label for="a-title">作業内容</label><input id="a-title" required placeholder="例：報告書作成"></div>';
   h+='<div class="field"><label for="a-who">担当</label><select id="a-who"><option value="">未定</option>'+ps.map(function(x){return '<option>'+esc(x)+'</option>'}).join('')+'</select></div>';
   h+='<div class="field"><label for="a-due">期限（あれば）</label><input id="a-due" type="date"></div>';
-  h+='<p class="small">いちばん最後の工程として追加されます。前の工程が終わると、この担当の人に自動で回ります。</p>';
+  var st=tasks.filter(function(t){return t.projectId===pid}).sort(function(a,b){return (a.step||0)-(b.step||0)});
+  h+='<div class="field"><label for="a-pos">入れる場所</label><select id="a-pos"><option value="0">いちばん上（最初の工程）</option>'+st.map(function(t,i){return '<option value="'+(i+1)+'"'+(i===st.length-1?' selected':'')+'>'+(i+1)+'.「'+esc(t.title.replace(/^【.*?】/,""))+'」の次</option>'}).join('')+'</select></div>';
+  h+='<p class="small">選んだ場所に工程が入り、後ろの工程の番号はひとつずつ下がります。前の工程がすべて終わっていれば、すぐ「未着手」になります。</p>';
   h+='<div class="actions"><span class="spacer"></span><button type="button" class="btn" id="a-cancel">キャンセル</button><button type="submit" class="btn primary" id="a-save">追加する</button></div></form></div>';
   $("sheetHost").innerHTML=h;
   var close=function(){$("sheetHost").innerHTML=''};
   $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
   $("a-cancel").onclick=close;
   $("aform").addEventListener("submit",async function(e){e.preventDefault();var b=$("a-save");b.disabled=true;b.textContent="追加中…";
-    try{apply(await api("apiAddStep",pid,{title:$("a-title").value.trim(),assignee:$("a-who").value,due:$("a-due").value}));close();toast("工程を追加しました")}
+    try{apply(await api("apiAddStep",pid,{title:$("a-title").value.trim(),assignee:$("a-who").value,due:$("a-due").value,pos:Number($("a-pos").value)}));close();toast("工程を追加しました")}
     catch(err){b.disabled=false;b.textContent="追加する";toast(errMsg(err))}});
+}
+function openRenameProject(pid){
+  var p=projects.find(function(x){return x.id===pid});if(!p)return;
+  var h='<div class="sheet-bg" id="bg"><form class="sheet" id="rform" role="dialog" aria-modal="true" aria-label="プロジェクトの名前を変更">';
+  h+='<h2>✏️ プロジェクトの名前を変更</h2>';
+  h+='<div class="field"><label for="r-name">プロジェクト名</label><input id="r-name" required value="'+esc(p.name)+'"></div>';
+  h+='<div class="field"><label for="r-prop">物件名</label><input id="r-prop" list="propListR" value="'+esc(p.property||"")+'"><datalist id="propListR">'+props().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist></div>';
+  h+='<p class="small">各工程のタスク名（【'+esc(p.name)+'】の部分）と物件名も、まとめて変わります。</p>';
+  h+='<div class="actions"><span class="spacer"></span><button type="button" class="btn" id="r-cancel">キャンセル</button><button type="submit" class="btn primary" id="r-save">変更する</button></div></form></div>';
+  $("sheetHost").innerHTML=h;
+  var close=function(){$("sheetHost").innerHTML=''};
+  $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
+  $("r-cancel").onclick=close;
+  $("rform").addEventListener("submit",async function(e){e.preventDefault();var n=$("r-name").value.trim();if(!n){$("r-name").focus();return}
+    var b=$("r-save");b.disabled=true;b.textContent="変更中…";
+    try{apply(await api("apiRenameProject",pid,n,$("r-prop").value.trim()));close();toast("名前を変更しました")}
+    catch(err){b.disabled=false;b.textContent="変更する";toast(errMsg(err))}});
+  $("r-name").focus();
 }
 function renderProjects(){
   const list=projects.map(p=>{const steps=tasks.filter(t=>t.projectId===p.id).sort((a,b)=>(a.step||0)-(b.step||0));
@@ -637,7 +657,7 @@ function renderProjects(){
         <span class="num">${DONE.has(t.status)?"✓":(t.step||0)+1}</span>
         <span class="main"><span class="st-title">${esc(t.title.replace(/^【.*?】/,""))}</span>
         <span class="meta"><span>👤 ${esc((t.assignees||[]).join("・")||"未定")}</span>${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}${t.due?`<span>${fmtDue(t.due)}</span>`:""}<span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span></span></span></button></li>`).join("")}</ol>
-      ${canWrite?`<div class="actions"><button class="btn small-btn" data-addstep="${esc(p.id)}">＋ 工程を追加</button><span class="spacer"></span><button class="btn danger small-btn" data-delproj="${esc(p.id)}">プロジェクトを削除</button></div>`:""}
+      ${canWrite?`<div class="actions"><button class="btn small-btn" data-addstep="${esc(p.id)}">＋ 工程を追加</button><button class="btn small-btn" data-renproj="${esc(p.id)}">✏️ 名前を変更</button><span class="spacer"></span><button class="btn danger small-btn" data-delproj="${esc(p.id)}">プロジェクトを削除</button></div>`:""}
     </article>`}).join("");
 }
 
@@ -980,6 +1000,7 @@ $("list").addEventListener("click",async e=>{
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
 $("projList").addEventListener("click",async e=>{
   const as=e.target.closest("[data-addstep]");if(as){openAddStep(as.dataset.addstep);return}
+  const rn=e.target.closest("[data-renproj]");if(rn){openRenameProject(rn.dataset.renproj);return}
   const d=e.target.closest("[data-delproj]");
   if(d){if(d.dataset.armed!=="1"){d.dataset.armed="1";d.textContent="工程のタスクもまとめて削除する";return}
     const pid=d.dataset.delproj;d.disabled=true;
