@@ -319,7 +319,9 @@ img{max-width:100%}
 .fabs .fab{position:static}
 .fab.alt{background:var(--surface);color:var(--ink);border:2px solid var(--accent)}
 #c-note{min-height:7.5em;resize:vertical;font-size:1rem;line-height:1.6;width:100%;box-sizing:border-box;white-space:pre-wrap;overflow-x:hidden}
-.arc.cin{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
+.arc.cin{background:var(--surface);border:2px dashed var(--s-done);color:var(--s-done);display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.25;text-align:center}
+.arc.cin .box{font-size:1.3em;line-height:1}
+.arc.cin:active,.arc.cin.on{background:var(--s-done);color:var(--surface);border-style:solid}
 .amt{display:flex;align-items:center;gap:6px}.amt input{flex:1;min-width:0}
 .preview{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-weight:700;overflow-wrap:anywhere}
 </style>
@@ -535,7 +537,7 @@ function row(t,i,n){
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
-      </span></button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}">入力完了</button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
+      </span></button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
 
 var NDEPTS=["全体","管理","工事","事務","民泊清掃"];
@@ -908,7 +910,7 @@ function openCinSheet(){
     <div class="field"><label for="c-note">補足・内訳（任意）</label><textarea id="c-note" rows="5" placeholder="例：&#10;部材 3,000円&#10;作業費 2,000円&#10;廃棄料込"></textarea></div>
     <div class="row"><button type="button" class="chip" id="c-me">期限：月末</button><button type="button" class="chip" id="c-none">期限なし</button></div>
     <div class="field"><span class="lab">登録されるタスク名</span><div class="preview" id="c-prev">【賃貸革命入力】</div></div>
-    <p class="small">賃貸革命に入力し終わったら、一覧の「入力完了」を押すとアーカイブに入ります。</p>
+    <p class="small">賃貸革命に入力し終わったら、一覧の「☐ 入力したら押す」を押すとアーカイブに入ります。</p>
     <div class="actions"><span class="spacer"></span><button type="button" class="btn" id="c-cancel">キャンセル</button><button type="submit" class="btn primary" id="c-save">登録する</button></div>
   </form></div>`;
   const close=()=>{$("sheetHost").innerHTML=""};
@@ -1007,7 +1009,7 @@ $("ordReset").addEventListener("click",e=>{const b=e.currentTarget;
 $("list").addEventListener("click",async e=>{
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
-  if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;ci.disabled=true;
+  if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;ci.disabled=true;ci.classList.add("on");ci.innerHTML='<span class="box">✓</span><span>入力完了</span>';
     try{apply(await api("apiSaveTask",{id:t.id,status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")}));toast("入力完了 → アーカイブに入れました")}catch(err){ci.disabled=false;toast(errMsg(err))}return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;a.disabled=true;
