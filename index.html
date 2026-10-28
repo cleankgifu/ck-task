@@ -189,7 +189,8 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .bagrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bacol{display:flex;flex-direction:column;gap:8px;background:var(--surface);border-radius:8px;padding:8px;border:2px solid var(--line)}
 .bacol.bef{border-color:#e7b9a6}.bacol.aft{border-color:#9ccfae}
-.batag{font-size:.95rem}
+.batag{font-size:1rem;white-space:nowrap}.batag small{font-size:.7rem;letter-spacing:.08em;opacity:.7}
+.bacol .att img{width:72px;height:72px}
 .bacol.bef .batag::before{content:"① ";}.bacol.aft .batag::before{content:"② ";}
 .bacol .upl{font-size:.85rem;padding:8px 10px;align-self:stretch;text-align:center}
 .repbox{background:var(--s-done-bg);border-radius:10px;padding:10px;display:block}
@@ -764,9 +765,9 @@ function openSheet(id){
       ${up?`<label class="btn upl">＋ 資料を添付（写真・PDF・動画）<input type="file" id="in-file" accept="image/${"*"},video/${"*"},application/pdf,.csv,.txt" multiple hidden></label>`:""}</div>
     <div class="field ba"><span class="lab">📷 作業の写真（ビフォー・アフター）</span>
       <div class="bagrid">
-        <div class="bacol bef"><b class="batag">作業前（ビフォー）</b><div class="atts" id="att-before"></div>
+        <div class="bacol bef"><b class="batag">作業前 <small>BEFORE</small></b><div class="atts" id="att-before"></div>
           ${up?`<label class="btn upl">📷 作業前を追加<input type="file" id="in-before" accept="image/${"*"}" multiple hidden></label>`:""}</div>
-        <div class="bacol aft"><b class="batag">完成（アフター）</b><div class="atts" id="att-report"></div>
+        <div class="bacol aft"><b class="batag">完成 <small>AFTER</small></b><div class="atts" id="att-report"></div>
           ${up?`<label class="btn upl">📷 完成写真を追加<input type="file" id="in-report" accept="image/${"*"}" multiple hidden></label>`:""}</div>
       </div>
       <span class="small">清掃・修繕の報告書には、この写真が「作業前 → 完成」の順で入ります。</span></div>
