@@ -353,6 +353,10 @@ header .hright{flex-basis:100%}
 .kk-empty{display:flex;flex-direction:column;align-items:center;gap:6px}
 .kk-empty .kk{width:110px;height:100px;opacity:.95}
 .toast{display:flex;align-items:center;gap:8px}
+#undoBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(124px + env(safe-area-inset-bottom,0px));z-index:31;font:inherit;font-weight:700;font-size:1rem;padding:10px 18px;border-radius:999px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;line-height:1.3;cursor:pointer;max-width:90vw}
+#undoBtn small{font-size:.72rem;font-weight:500;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80vw}
+#undoBtn[hidden]{display:none}
+
 .toast .kk{width:30px;height:28px;flex:0 0 auto}
 .pin-kk{width:96px;height:88px;align-self:center}
 @media (prefers-reduced-motion:no-preference){
@@ -1123,6 +1127,51 @@ fillSelects();paintKK();$("kkBuddy").addEventListener("click",()=>{kkTap++;rende
   // 30秒ごとに最新の内容を読み込む（編集画面を開いている間は待つ）
   setInterval(()=>{if(document.visibilityState==="visible"&&!$("sheetHost").innerHTML)refresh()},30000);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!$("sheetHost").innerHTML)refresh()});
+})();
+</script>
+<script>
+/* ===== 戻る（スマホの戻るボタンでアプリが閉じないように）と「元に戻す」 ===== */
+(function(){
+  var host=document.getElementById("sheetHost");
+  var viewStack=[],lastBack=0,exiting=false;
+  try{history.replaceState({ck:"base"},"");history.pushState({ck:"guard"},"")}catch(_){}
+  document.querySelector(".tabs").addEventListener("click",function(e){var b=e.target.closest("[data-view]");if(!b)return;
+    if(b.dataset.view!==VIEW){viewStack.push(VIEW);if(viewStack.length>20)viewStack.shift()}},true);
+  function regard(){try{history.pushState({ck:"guard"},"")}catch(_){}}
+  window.addEventListener("popstate",function(){
+    if(exiting)return;
+    var pin=document.getElementById("pinBox");
+    if(host&&host.innerHTML.trim()){host.innerHTML="";regard();return}
+    if(viewStack.length){VIEW=viewStack.pop();try{localStorage.setItem("ckview",VIEW)}catch(_){}render();regard();return}
+    var now=Date.now();
+    if(now-lastBack<2500){exiting=true;history.back();return}
+    lastBack=now;regard();toast("もう一度「戻る」を押すと閉じます");
+  });
+
+  /* 元に戻す */
+  var undo=[];var ub=document.createElement("button");ub.id="undoBtn";ub.type="button";ub.hidden=true;document.body.appendChild(ub);
+  var hideT=null,busy=false;
+  function showUndo(){if(!undo.length){ub.hidden=true;return}var u=undo[undo.length-1];ub.innerHTML='↩ 元に戻す<small>'+esc(u.label)+'</small>';ub.hidden=false;clearTimeout(hideT);hideT=setTimeout(function(){ub.hidden=true},15000)}
+  function clone(o){return o?JSON.parse(JSON.stringify(o)):o}
+  var _api=api;
+  api=function(fn){var args=[].slice.call(arguments,1);
+    if(busy)return _api.apply(null,arguments);
+    var rec=null,beforeIds=null;
+    if(fn==="apiSaveTask"&&args[0]){var b=args[0];var keys=Object.keys(b).filter(function(k){return k!=="id"});
+      var trivial=keys.every(function(k){return k==="attachments"})||(keys.length===1&&keys[0]==="report"&&b.id&&(function(){var t=tasks.find(function(x){return x.id===b.id});if(!t)return false;var a=Object.assign({},t.report||{}),c=Object.assign({},b.report||{});delete a.ord;delete c.ord;return JSON.stringify(a)===JSON.stringify(c)})());
+      if(!trivial){if(b.id){var t=tasks.find(function(x){return x.id===b.id});if(t)rec={type:"restore",prev:clone(t),label:"「"+String(t.title).replace(/^【.*?】/,"").slice(0,18)+"」の変更"}}
+        else{beforeIds=new Set(tasks.map(function(x){return x.id}));rec={type:"remove",label:"「"+String(b.title||"").replace(/^【.*?】/,"").slice(0,18)+"」の追加"}}}}
+    if(fn==="apiDeleteTask"){var d=tasks.find(function(x){return x.id===args[0]});if(d)rec={type:"restore",prev:clone(d),label:"「"+String(d.title).replace(/^【.*?】/,"").slice(0,18)+"」の削除"}}
+    var p=_api.apply(null,arguments);
+    if(!rec)return p;
+    return p.then(function(r){
+      if(rec.type==="remove"&&r&&r.tasks){var n=r.tasks.find(function(x){return !beforeIds.has(x.id)});if(!n)return r;rec.id=n.id}
+      undo.push(rec);if(undo.length>10)undo.shift();setTimeout(showUndo,0);return r});
+  };
+  ub.addEventListener("click",async function(){var u=undo.pop();if(!u)return;ub.disabled=true;busy=true;
+    try{var r=u.type==="remove"?await _api("apiDeleteTask",u.id):await _api("apiSaveTask",u.prev);apply(r);if(host)host.innerHTML="";toast("元に戻しました")}
+    catch(err){undo.push(u);toast(errMsg(err))}
+    finally{busy=false;ub.disabled=false;showUndo()}});
 })();
 </script>
 </body>
