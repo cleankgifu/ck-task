@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CKタスク</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
 <style>
 /* Layout: 現場で片手で見るリスト。上に要約、フィルタ、期限順のタスク行。タップで下から編集シート */
 :root{
@@ -22,8 +22,8 @@
   --s-hold:#7b6692; --s-hold-bg:#e9e0f0;
   --over:#b0545e;
   --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
-  --f-body:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
-  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --f-body:"M PLUS Rounded 1c","Noto Sans JP","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --f-num:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#2a221e; --surface:#352b26; --ink:#f3e8da; --muted:#bba895; --line:#4c3f37;
@@ -325,6 +325,15 @@ img{max-width:100%}
 .amt{display:flex;align-items:center;gap:6px}.amt input{flex:1;min-width:0}
 .preview{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-weight:700;overflow-wrap:anywhere}
 
+
+/* フォント：見出し・数字は極太ゴシック、本文はまる文字 */
+body{font-weight:700}
+.title,.tabs button,.chip,.btn,.fab,.pill,.mine-big .who,.sum span,.st-title,.proj h3,.note h3,.kk-say{font-weight:800}
+.sum b,.mine-big b,.prog b{font-weight:400}
+h1 small{font-weight:800;letter-spacing:.1em}
+.due{font-family:var(--f-body);font-weight:800}
+.sum b,.mine-big b{font-family:var(--f-display);font-weight:400}
+.tabs button[aria-selected="true"]{font-weight:900}
 /* ===== カー君 ===== */
 :root{--kk-body:#a5a4a5;--kk-beak:#a5a4a5;--kk-leg:#a5a4a5;--kk-line:#ffffff;--kk-acc:#4a7fb5}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]):not([data-skin]){--kk-body:#9b9a9b;--kk-beak:#9b9a9b;--kk-leg:#9b9a9b;--kk-line:#352b26}}
