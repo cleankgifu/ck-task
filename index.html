@@ -324,13 +324,52 @@ img{max-width:100%}
 .arc.cin:active,.arc.cin.on{background:var(--s-done);color:var(--surface);border-style:solid}
 .amt{display:flex;align-items:center;gap:6px}.amt input{flex:1;min-width:0}
 .preview{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-weight:700;overflow-wrap:anywhere}
+
+/* ===== カー君 ===== */
+:root{--kk-body:#a5a4a5;--kk-beak:#a5a4a5;--kk-leg:#a5a4a5;--kk-line:#ffffff;--kk-acc:#4a7fb5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]):not([data-skin]){--kk-body:#9b9a9b;--kk-beak:#9b9a9b;--kk-leg:#9b9a9b;--kk-line:#352b26}}
+:root[data-skin="vivid"]{--kk-body:#1f5fbf;--kk-beak:#1f5fbf;--kk-leg:#1f5fbf;--kk-acc:#f2b705}
+:root[data-skin="candy"]{--kk-body:#bfb2e3;--kk-beak:#bfb2e3;--kk-leg:#bfb2e3;--kk-acc:#f3b9cb}
+:root[data-skin="stripe"]{--kk-body:#2c5a9c;--kk-beak:#2c5a9c;--kk-leg:#2c5a9c;--kk-acc:#d24646}
+:root[data-skin="tiger"]{--kk-body:url(#kkTiger);--kk-beak:#e8892b;--kk-leg:#2b2622;--kk-acc:#e8892b}
+:root[data-skin="nordic"]{--kk-body:#7fa3a3;--kk-beak:#7fa3a3;--kk-leg:#7fa3a3;--kk-acc:#4c8889}
+:root[data-skin="camo"]{--kk-body:url(#kkCamo);--kk-beak:#6f7a4a;--kk-leg:#6f7a4a;--kk-acc:#b8a26a}
+.kksvg{display:block;width:100%;height:100%;overflow:visible}
+header{align-items:center}
+header .hright{flex-basis:100%}
+.kk-buddy{display:flex;align-items:center;gap:6px;cursor:pointer;background:none;border:0;padding:0;font:inherit;color:inherit;margin-left:auto}
+.kk-buddy .kk{width:58px;height:54px;flex:0 0 auto}
+.kk-say{position:relative;background:var(--surface);color:var(--ink);border:2px solid var(--line);border-radius:14px;padding:5px 9px;font-size:.74rem;font-weight:700;line-height:1.35;max-width:8.6em;text-align:left}
+.kk-say::after{content:"";position:absolute;right:-9px;top:50%;margin-top:-7px;border:7px solid transparent;border-right:0;border-left-color:var(--line)}
+.kk-empty{display:flex;flex-direction:column;align-items:center;gap:6px}
+.kk-empty .kk{width:110px;height:100px;opacity:.95}
+.toast{display:flex;align-items:center;gap:8px}
+.toast .kk{width:30px;height:28px;flex:0 0 auto}
+.pin-kk{width:96px;height:88px;align-self:center}
+@media (prefers-reduced-motion:no-preference){
+  .kk-buddy .kk{animation:kkwave 3.2s ease-in-out infinite;transform-origin:50% 90%}
+  @keyframes kkbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  @keyframes kkwave{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-6deg)}90%{transform:rotate(5deg)}95%{transform:rotate(-3deg)}}
+}
+@media (max-width:600px){.kk-say{font-size:.72rem}}
+/* 迷彩 */
+:root[data-skin="camo"]{--bg:#f1efe4;--surface:#fffdf6;--ink:#2b3020;--muted:#6d7258;--line:#dcd8c3;--accent:#6e7a45;--accent-ink:#ffffff;--accent-soft:#e3e6cf;
+  --s-todo:#6d7258;--s-todo-bg:#ebe9dc;--s-doing:#3f6f98;--s-doing-bg:#dce8f2;--s-wait:#9a7a1c;--s-wait-bg:#f3e8c2;--s-check:#b0544a;--s-check-bg:#f4dcd6;--s-done:#4e6e33;--s-done-bg:#dfe8d0;--s-hold:#6e6189;--s-hold-bg:#e7e2ee;--over:#b0544a}
+:root[data-skin="camo"] .mine{background:#7b8752 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cpath d='M10,20 C30,0 60,10 55,35 C50,55 20,60 10,45 Z' fill='%234e5a33'/%3E%3Cpath d='M80,10 C110,5 130,25 115,45 C100,60 75,40 80,10 Z' fill='%23a39a6a'/%3E%3Cpath d='M60,70 C90,60 120,80 105,105 C90,125 55,115 50,95 Z' fill='%2333391f'/%3E%3Cpath d='M5,90 C25,80 40,100 30,120 C20,135 0,125 5,90 Z' fill='%23a39a6a'/%3E%3C/svg%3E");color:#2b3020}
+:root[data-skin="camo"] .mine-head,:root[data-skin="camo"] .mine-big{background:rgba(255,253,244,.94);border-radius:10px;padding:6px 10px;align-self:flex-start}
+:root[data-skin="camo"] .tabs button[aria-selected="true"]{background:#2b3020;color:#e8dfb8}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<pattern id="kkTiger" patternUnits="userSpaceOnUse" width="120" height="120" patternTransform="rotate(-15)"><rect width="120" height="120" fill="#eb9440"/><path d="M0,10 C25,4 45,18 70,12 C55,22 30,24 0,22 Z" fill="#2b2622"/><path d="M50,40 C75,34 100,46 120,38 L120,50 C100,56 80,52 60,50 Z" fill="#2b2622"/><path d="M0,72 C20,66 40,78 62,70 C48,82 22,84 0,84 Z" fill="#2b2622"/><path d="M70,98 C88,92 104,104 120,98 L120,110 C102,114 86,110 74,106 Z" fill="#2b2622"/></pattern>
+<pattern id="kkCamo" patternUnits="userSpaceOnUse" width="140" height="140"><rect width="140" height="140" fill="#9aa173"/><path d="M10,20 C30,0 60,10 55,35 C50,55 20,60 10,45 Z" fill="#6f7a4a"/><path d="M80,10 C110,5 130,25 115,45 C100,60 75,40 80,10 Z" fill="#c9bd8f"/><path d="M60,70 C90,60 120,80 105,105 C90,125 55,115 50,95 Z" fill="#4f5833"/><path d="M5,90 C25,80 40,100 30,120 C20,135 0,125 5,90 Z" fill="#c9bd8f"/></pattern>
+</defs></svg>
 
 <div class="wrap">
   <header>
     <h1><small>CLEAN K ／ CK KANRI</small>CKタスク</h1>
+    <button type="button" class="kk-buddy" id="kkBuddy" aria-label="カー君"><span class="kk-say" id="kkSay">今日もがんばろう！</span><span class="kk" data-pose="wave"></span></button>
     <span class="hright"><label class="skinpick" for="skin">🎨<select id="skin" aria-label="色のテーマ"></select></label><span class="count" id="count"></span></span>
   </header>
   <div class="notice" id="notice" hidden></div>
@@ -473,6 +512,18 @@ function visible(){
   });
 }
 
+const KK={"run": "<g><path d=\"M200,285 L250,330 L285,322\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M200,285 L250,330 L285,322\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M165,275 L120,318 L88,306\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M165,275 L120,318 L88,306\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><g transform=\"rotate(12,180,200)\"><path d=\"M222,52 C215,100 160,112 115,126 C75,140 45,160 36,172 L8,228 C35,245 70,246 96,238 C125,282 168,302 212,300 C262,298 292,258 292,205 L288,108 Z\" style=\"fill:var(--kk-body)\"/><circle cx=\"262\" cy=\"70\" r=\"60\" style=\"fill:var(--kk-body)\"/><path d=\"M298,52 C330,58 352,74 362,96 C340,100 315,100 296,98 Z\" style=\"fill:var(--kk-beak);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/><path d=\"M302,82 L346,86\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/><path d=\"M240,62 Q254,74 270,64\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"8\" stroke-linecap=\"round\"/><path d=\"M30,214 L92,214\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/></g><g transform=\"translate(175,160) rotate(20) scale(1.0)\"><path d=\"M0,-20 C-40,-32 -95,-26 -130,-6 L-112,4 L-126,15 L-100,20 L-112,30 C-70,36 -25,28 0,20 Z\" style=\"fill:var(--kk-body);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/></g></g>", "wave": "<g><g transform=\"translate(160,140) rotate(62) scale(1.05)\"><path d=\"M0,-20 C-40,-32 -95,-26 -130,-6 L-112,4 L-126,15 L-100,20 L-112,30 C-70,36 -25,28 0,20 Z\" style=\"fill:var(--kk-body);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/></g><path d=\"M150,275 L98,328 L70,330\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M150,275 L98,328 L70,330\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M205,292 L228,340 L262,340\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M205,292 L228,340 L262,340\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><g transform=\"rotate(0,180,200)\"><path d=\"M222,52 C215,100 160,112 115,126 C75,140 45,160 36,172 L8,228 C35,245 70,246 96,238 C125,282 168,302 212,300 C262,298 292,258 292,205 L288,108 Z\" style=\"fill:var(--kk-body)\"/><circle cx=\"262\" cy=\"70\" r=\"60\" style=\"fill:var(--kk-body)\"/><path d=\"M298,52 C330,58 352,74 362,96 C340,100 315,100 296,98 Z\" style=\"fill:var(--kk-beak);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/><path d=\"M302,82 L346,86\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/><path d=\"M240,62 Q254,74 270,64\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"8\" stroke-linecap=\"round\"/><path d=\"M30,214 L92,214\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/></g></g>", "tool": "<g><path d=\"M155,278 L120,330 L92,332\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M155,278 L120,330 L92,332\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M205,292 L222,338 L255,342\" fill=\"none\" style=\"stroke:var(--kk-leg)\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M205,292 L222,338 L255,342\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><g transform=\"rotate(-6,180,200)\"><path d=\"M222,52 C215,100 160,112 115,126 C75,140 45,160 36,172 L8,228 C35,245 70,246 96,238 C125,282 168,302 212,300 C262,298 292,258 292,205 L288,108 Z\" style=\"fill:var(--kk-body)\"/><circle cx=\"262\" cy=\"70\" r=\"60\" style=\"fill:var(--kk-body)\"/><path d=\"M298,52 C330,58 352,74 362,96 C340,100 315,100 296,98 Z\" style=\"fill:var(--kk-beak);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/><path d=\"M302,82 L346,86\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/><path d=\"M240,62 Q254,74 270,64\" fill=\"none\" style=\"stroke:var(--kk-line)\" stroke-width=\"8\" stroke-linecap=\"round\"/><path d=\"M30,214 L92,214\" style=\"stroke:var(--kk-line)\" stroke-width=\"5\" stroke-linecap=\"round\"/></g><g transform=\"translate(335,215) rotate(-30) scale(1.45)\"><rect x=\"-10\" y=\"-70\" width=\"20\" height=\"120\" rx=\"10\" style=\"fill:var(--kk-acc);stroke:var(--kk-line)\"  stroke-width=\"5\"/><path d=\"M-30,-95 A32,32 0 1 0 30,-95 L14,-95 L14,-78 L-14,-78 L-14,-95 Z\" style=\"fill:var(--kk-acc);stroke:var(--kk-line)\"  stroke-width=\"5\" stroke-linejoin=\"round\"/></g><g transform=\"translate(215,180) rotate(195) scale(0.95)\"><path d=\"M0,-20 C-40,-32 -95,-26 -130,-6 L-112,4 L-126,15 L-100,20 L-112,30 C-70,36 -25,28 0,20 Z\" style=\"fill:var(--kk-body);stroke:var(--kk-line)\"  stroke-width=\"6\" stroke-linejoin=\"round\"/></g></g>"};
+function kk(pose){return `<svg class="kksvg" viewBox="-15 -10 400 365" aria-hidden="true">${KK[pose]||KK.wave}</svg>`}
+function kkEl(pose){return `<span class="kk">${kk(pose)}</span>`}
+function paintKK(){document.querySelectorAll(".kk[data-pose]").forEach(e=>{if(!e.firstChild)e.innerHTML=kk(e.dataset.pose)})}
+const KK_CHEER=["今日もがんばろう！","安全運転でね","水分とってね","いつもありがとう！","ひとつずつ片付けよう","休けいも大事だよ"];
+let kkTap=0;
+function kkSay(over,left,week){
+  const el=$("kkSay");if(!el)return;
+  if(!loaded){el.textContent="読み込み中…";return}
+  if(kkTap){el.textContent=KK_CHEER[kkTap%KK_CHEER.length];return}
+  el.textContent=over>0?`期限切れが${over}件あるよ！`:left===0?"ぜんぶ終わり！おつかれさま":week>0?`7日以内が${week}件あるよ`:"今日もがんばろう！";
+}
 function render(){
   // summary（選んでいる人の分だけ数える）
   const ps=people();
@@ -484,6 +535,7 @@ function render(){
   setN("n-doing",open.filter(t=>t.status==="進行中").length);
   setN("n-todo",open.filter(t=>t.status==="未着手").length);
   $("n-left").textContent=loaded?open.length:"–";
+  {const ov=open.filter(t=>{const d=daysLeft(t.due);return d!==null&&d<0}).length,wk=open.filter(t=>{const d=daysLeft(t.due);return d!==null&&d>=0&&d<=7}).length;kkSay(ov,open.length,wk)}
   $("mineWho").textContent=F.who?(F.who===ME?`${F.who}さん（わたし）の残り`:`${F.who}さんの残り`):"全員の残り";
   document.querySelectorAll(".sum").forEach(b=>b.setAttribute("aria-pressed",String(F.quick===b.dataset.quick)));
   $("me").innerHTML=`<option value="">選んでください</option>`+ps.map(p=>`<option ${p===ME?"selected":""}>${esc(p)}</option>`).join("");
@@ -501,7 +553,7 @@ function render(){
   if(VIEW==="projects"){renderProjects();return}
   const v=visible();
   $("count").textContent=`${v.length}件表示 ／ 全${tasks.length}件`;
-  if(!v.length){$("list").innerHTML=`<li class="empty">${tasks.length?"条件に合うタスクはありません。":"まだタスクがありません。右下の「＋ タスク追加」から登録できます。"}</li>`;return}
+  if(!v.length){$("list").innerHTML=`<li class="empty"><div class="kk-empty">${kkEl("wave")}<span>${tasks.length?"条件に合うタスクはありません。":"まだタスクがありません。右下の「＋ タスク追加」から登録できます。"}</span></div></li>`;return}
   const showSplit=F.status==="open";
   const act=showSplit?v.filter(t=>!DONE.has(t.status)):v;
   const fin=showSplit?v.filter(t=>DONE.has(t.status)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)):[];
@@ -674,7 +726,7 @@ function renderProjects(){
 // サーバー（Googleスプレッドシート）とのやりとり
 function getPin(){try{return localStorage.getItem("ckpin")||window.__pin||""}catch(_){return window.__pin||""}}
 function setPin(p){window.__pin=p;try{if(p)localStorage.setItem("ckpin",p);else localStorage.removeItem("ckpin")}catch(_){}}
-function askPin(msg){return new Promise(ok=>{const d=document.createElement("div");d.style.cssText="position:fixed;inset:0;z-index:999;background:rgba(61,48,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";d.innerHTML=`<form style="background:var(--surface);color:var(--ink);border-radius:16px;padding:22px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:12px"><b style="font-size:1.15rem">CKタスク 暗証番号</b><span style="font-size:.92rem">${esc(msg||"暗証番号を入れてください（このスマホ・パソコンでは最初の1回だけ）")}</span><input type="password" inputmode="numeric" autocomplete="off" aria-label="暗証番号" style="font-size:1.5rem;padding:10px;border:1px solid var(--line);border-radius:10px;letter-spacing:.3em;background:var(--bg);color:var(--ink)"><button style="background:var(--accent);color:var(--accent-ink);padding:12px;border:0;border-radius:10px;font-weight:700;font-size:1rem">開く</button></form>`;document.body.appendChild(d);const f=d.querySelector("form"),i=d.querySelector("input");setTimeout(()=>i.focus(),50);f.addEventListener("submit",e=>{e.preventDefault();const v=i.value.trim();if(!v)return;setPin(v);d.remove();ok(v)})})}
+function askPin(msg){return new Promise(ok=>{const d=document.createElement("div");d.style.cssText="position:fixed;inset:0;z-index:999;background:rgba(61,48,42,.55);display:flex;align-items:center;justify-content:center;padding:16px";d.innerHTML=`<form style="background:var(--surface);color:var(--ink);border-radius:16px;padding:22px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:12px"><span class="pin-kk">${kk("wave")}</span><b style="font-size:1.15rem">CKタスク 暗証番号</b><span style="font-size:.92rem">${esc(msg||"暗証番号を入れてください（このスマホ・パソコンでは最初の1回だけ）")}</span><input type="password" inputmode="numeric" autocomplete="off" aria-label="暗証番号" style="font-size:1.5rem;padding:10px;border:1px solid var(--line);border-radius:10px;letter-spacing:.3em;background:var(--bg);color:var(--ink)"><button style="background:var(--accent);color:var(--accent-ink);padding:12px;border:0;border-radius:10px;font-weight:700;font-size:1rem">開く</button></form>`;document.body.appendChild(d);const f=d.querySelector("form"),i=d.querySelector("input");setTimeout(()=>i.focus(),50);f.addEventListener("submit",e=>{e.preventDefault();const v=i.value.trim();if(!v)return;setPin(v);d.remove();ok(v)})})}
 var EXEC_URL="https:/"+"/script.google.com/macros/s/AKfycbxnYfcT0-ejla-Sgj9H_yAY_fKA2nqll2akV5A6NnCGhBSz3J2AYpY1JY-CYCoqa6xFbQ/exec";
 function apiGs(fn,args){return new Promise(function(ok,ng){google.script.run.withSuccessHandler(ok).withFailureHandler(ng).apiCall(getPin(),ME||"",fn,args)})}
 function api(fn){var args=[].slice.call(arguments,1);
@@ -724,7 +776,7 @@ function openProjectSheet(){
   $("p-name").focus();
 }
 
-function toast(m){const el=$("toast");el.textContent=m;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+function toast(m){const el=$("toast");el.innerHTML=kkEl("run")+`<span>${esc(m)}</span>`;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
 
 function calUrl(t){
   if(!t.due)return "";const d=parseD(t.due);const n=new Date(d);n.setDate(n.getDate()+1);
@@ -1033,13 +1085,13 @@ $("n-arc").addEventListener("change",function(e){NF.arc=e.target.value;renderNot
 
 
 // ===== 着せかえ：2026年10月から2か月ごとに自動で切り替わる =====
-const SKINS=[["earth","アースカラー"],["vivid","原色ポップ"],["candy","パステルキャンディ"],["stripe","マリンストライプ"],["tiger","タイガー"],["nordic","北欧ナチュラル"]];
+const SKINS=[["earth","アースカラー"],["vivid","原色ポップ"],["candy","パステルキャンディ"],["stripe","マリンストライプ"],["tiger","タイガー"],["nordic","北欧ナチュラル"],["camo","迷彩"]];
 function autoSkin(){const d=new Date();const m=(d.getFullYear()-2026)*12+d.getMonth()-9;return SKINS[((Math.floor(m/2))%SKINS.length+SKINS.length)%SKINS.length][0]}
 let SKIN="auto";try{SKIN=localStorage.getItem("ckskin")||"auto"}catch(_){}
 function applySkin(){const k=SKIN==="auto"?autoSkin():SKIN;if(k==="earth")delete document.documentElement.dataset.skin;else document.documentElement.dataset.skin=k}
 function fillSkin(){const now=SKINS.find(s=>s[0]===autoSkin())[1];$("skin").innerHTML=`<option value="auto">おまかせ（今は${now}）</option>`+SKINS.map(([k,n])=>`<option value="${k}">${n}</option>`).join("");$("skin").value=SKIN}
 fillSkin();applySkin();$("skin").addEventListener("change",e=>{SKIN=e.target.value;try{localStorage.setItem("ckskin",SKIN)}catch(_){}applySkin()});
-fillSelects();render();
+fillSelects();paintKK();$("kkBuddy").addEventListener("click",()=>{kkTap++;render()});render();
 
 (async()=>{
   if(!getPin())await askPin("");
