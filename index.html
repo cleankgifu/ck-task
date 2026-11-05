@@ -371,6 +371,14 @@ header .hright{flex-basis:100%}
 :root[data-skin="camo"] .mine{background:#7b8752 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cpath d='M10,20 C30,0 60,10 55,35 C50,55 20,60 10,45 Z' fill='%234e5a33'/%3E%3Cpath d='M80,10 C110,5 130,25 115,45 C100,60 75,40 80,10 Z' fill='%23a39a6a'/%3E%3Cpath d='M60,70 C90,60 120,80 105,105 C90,125 55,115 50,95 Z' fill='%2333391f'/%3E%3Cpath d='M5,90 C25,80 40,100 30,120 C20,135 0,125 5,90 Z' fill='%23a39a6a'/%3E%3C/svg%3E");color:#2b3020}
 :root[data-skin="camo"] .mine-head,:root[data-skin="camo"] .mine-big{background:rgba(255,253,244,.94);border-radius:10px;padding:6px 10px;align-self:flex-start}
 :root[data-skin="camo"] .tabs button[aria-selected="true"]{background:#2b3020;color:#e8dfb8}
+.repbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 10px}
+.repbtn{font:inherit;font-weight:800;font-size:clamp(.88rem,3.9vw,1.05rem);white-space:nowrap;padding:14px 6px;border-radius:12px;border:2px solid var(--accent);background:var(--surface);color:var(--ink);cursor:pointer}
+.repbtn:active{transform:scale(.98)}
+.pick{list-style:none;margin:6px 0 0;padding:0;max-height:55vh;overflow:auto}
+.pick li button{width:100%;text-align:left;font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:block}
+.pick .pt{font-weight:800;display:block}
+.pick .pm{font-size:.85rem;color:var(--muted);display:block;margin-top:2px}
+.pick .ok{color:var(--accent);font-weight:800}
 </style>
 </head>
 <body>
@@ -411,6 +419,7 @@ header .hright{flex-basis:100%}
   <div class="chips" id="who" aria-label="担当で絞り込み"></div>
 
   <div id="taskView">
+    <div class="repbtns"><button type="button" class="repbtn" id="repClean">🧹 清掃報告書を作る</button><button type="button" class="repbtn" id="repShu">🔧 修繕報告書を作る</button></div>
     <div class="filters">
       <div class="row">
         <input id="q" type="search" placeholder="タスク名・物件・メモで検索">
@@ -980,6 +989,54 @@ const CIN="【賃貸革命入力】";
 function isCin(t){return String(t.title||"").includes("賃貸革命")}
 function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function monthEnd(){const d=new Date();return ymd(new Date(d.getFullYear(),d.getMonth()+1,0))}
+// 最初のページの「清掃報告書を作る」「修繕報告書を作る」：タスクを選ぶ→そのタスクの報告書欄を開く
+const REP_RE=/修繕|修理|交換|補修|工事|設置|取付|取替|球切れ|水漏れ/;
+function repCands(kind,all){
+  const lim=ymd(new Date(Date.now()-30*864e5));
+  return tasks.filter(t=>{
+    if((t.title||"").startsWith(CIN)||t.status===WAITING)return false;
+    const r=t.report||{};
+    if(ARCH.has(t.status)&&!(r.doneAt&&r.doneAt>=lim))return false;
+    if(all)return true;
+    return kind==="clean"?(/清掃/.test(t.title||"")||!!(r.work||r.req)):(REP_RE.test(t.title||"")||t.category==="工事"||!!(r.sWork||r.sReq));
+  }).map(t=>{const r=t.report||{},n=(t.attachments||[]).filter(a=>a.kind==="report").length,req=kind==="clean"?r.req:r.sReq;
+    return {t,n,req,rank:req==="作成済"?2:req==="依頼中"?1:0}})
+    .sort((a,b)=>a.rank-b.rank||(b.n>0)-(a.n>0)||String(a.t.due||"9").localeCompare(String(b.t.due||"9")));
+}
+function openRepPick(kind){
+  const name=kind==="clean"?"🧹 清掃報告書":"🔧 修繕報告書";
+  $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${name}">
+    <h2>${name}を作る</h2>
+    <p class="small">どのタスクの報告書を作りますか？ 選ぶと、そのタスクの写真と報告書の欄が開きます。</p>
+    <div class="row"><input id="rp-q" type="search" placeholder="物件名・タスク名で探す"></div>
+    <label class="small"><input type="checkbox" id="rp-all"> ほかのタスクも全部表示する</label>
+    <ul class="pick" id="rp-list"></ul>
+    <div class="actions">${canWrite?`<button type="button" class="btn" id="rp-new">＋ 新しいタスクで作る</button>`:""}<span class="spacer"></span><button type="button" class="btn" id="rp-cancel">閉じる</button></div>
+  </div></div>`;
+  const close=()=>{$("sheetHost").innerHTML=""};
+  const draw=()=>{const q=$("rp-q").value.trim().toLowerCase();
+    const c=repCands(kind,$("rp-all").checked).filter(x=>!q||[x.t.title,x.t.property,x.t.room,x.t.memo].join(" ").toLowerCase().includes(q));
+    $("rp-list").innerHTML=c.length?c.slice(0,80).map(x=>{const t=x.t;
+      const st=x.req==="作成済"?"✅ 作成済み":x.req==="依頼中"?"📄 作成依頼済み":"";
+      const ph=x.n?`<span class="ok">📷 完成写真 ${x.n}枚</span>`:"📷 写真まだ";
+      return `<li><button type="button" data-pick="${esc(t.id)}"><span class="pt">${esc(t.title||"（無題）")}</span><span class="pm">${[t.property&&esc(t.property+(t.room?" "+t.room:"")),t.due&&esc(t.due),esc(t.status||"")].filter(Boolean).join("　")}</span><span class="pm">${ph}${st?"　"+st:""}</span></button></li>`}).join("")
+      :`<li class="empty">該当するタスクがありません。「ほかのタスクも全部表示する」か「新しいタスクで作る」を使ってください。</li>`};
+  draw();
+  $("rp-q").addEventListener("input",draw);$("rp-all").addEventListener("change",draw);
+  $("rp-cancel").onclick=close;
+  $("bg").addEventListener("click",e=>{if(e.target.id==="bg")close()});
+  $("rp-list").addEventListener("click",e=>{const b=e.target.closest("[data-pick]");if(!b)return;openRepFor(b.dataset.pick,kind)});
+  if($("rp-new"))$("rp-new").onclick=()=>{openRepFor(null,kind)};
+}
+function openRepFor(id,kind){
+  openSheet(id);
+  const box=document.querySelector(kind==="clean"?"#form .repbox:not(.shubox)":"#form .shubox");if(!box)return;
+  box.open=true;
+  if(!id){const ti=$("e-title");if(ti&&!ti.value)ti.value=kind==="clean"?"定期清掃 ":"修繕 ";toast("先に写真と内容を入れて「保存」してください。保存したあとに作成依頼ボタンが出ます",6000)}
+  const t=id&&tasks.find(x=>x.id===id),hasPhoto=t&&(t.attachments||[]).some(a=>a.kind==="report");
+  const target=hasPhoto?box:(document.querySelector("#form .field.ba")||box);
+  setTimeout(()=>target.scrollIntoView({behavior:"smooth",block:"start"}),60);
+}
 function openCinSheet(){
   const ps=people().filter(p=>p!=="情報共有"&&p!=="民泊");
   const def=ps.includes("森")?"森":(ME||"");
@@ -1113,6 +1170,8 @@ $("projList").addEventListener("click",async e=>{
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b)return;VIEW=b.dataset.view;try{localStorage.setItem("ckview",VIEW)}catch(_){}render()});
 $("addCin").addEventListener("click",openCinSheet);
+$("repClean").addEventListener("click",()=>openRepPick("clean"));
+$("repShu").addEventListener("click",()=>openRepPick("shu"));
 $("add").addEventListener("click",()=>VIEW==="notes"?openNote(null):VIEW==="projects"?openProjectSheet():openSheet(null));
 $("noteList").addEventListener("click",e=>{const b=e.target.closest("[data-note]");if(b)openNote(b.dataset.note)});
 $("nq").addEventListener("input",e=>{NQ=e.target.value;renderNotes()});
