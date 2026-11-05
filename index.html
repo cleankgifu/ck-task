@@ -487,6 +487,7 @@ function fillSelects(){
   $("f-status").value=F.status;
 }
 function people(){const s=new Set(PEOPLE.length?PEOPLE:BASE_PEOPLE);if(PEOPLE.length)BASE_PEOPLE.filter(p=>p==="情報共有"||p==="民泊").forEach(p=>s.add(p));tasks.forEach(t=>(t.assignees||[]).forEach(p=>s.add(p)));return [...s]}
+function roomOf(t){const r=String((t&&t.report&&t.report.room)||"").trim();return !r?"":/^[0-9０-９A-Za-z\-－]+$/.test(r)?r+"号室":r}
 function clients(){const s=new Set();tasks.forEach(t=>t.client&&s.add(t.client));return [...s].sort()}
 // 業者名（一度入れた業者は一覧に出る。新しく使った順）
 function vendors(){const m=new Map();tasks.forEach(t=>{const v=t.report&&t.report.vendor;if(v)m.set(v,Math.max(m.get(v)||0,t.updatedAt||0))});return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0])}
@@ -509,7 +510,7 @@ function visible(){
       if(F.quick==="week"&&!(dl!==null&&dl>=0&&dl<=7&&isOpen(t)))return false;
       if(F.quick==="doing"&&t.status!=="進行中")return false;
       if(F.quick==="todo"&&t.status!=="未着手")return false;}
-    if(q&&!`${t.title} ${t.property||""} ${t.client||""} ${(t.report&&t.report.vendor)||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
+    if(q&&!`${t.title} ${t.property||""} ${roomOf(t)} ${t.client||""} ${(t.report&&t.report.vendor)||""} ${t.memo||""}`.toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
     const ga=grp(a),gb=grp(b);if(ga!==gb)return ga-gb;
@@ -593,7 +594,7 @@ function row(t,i,n){
         <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>
           ${t.projectId?`<span class="projtag">▸ ${esc(t.projectName||"プロジェクト")} ${(t.step??0)+1}/${t.stepTotal||"?"}</span>`:""}
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
-          ${t.property?`<span>🏢 ${esc(t.property)}</span>`:""}
+          ${t.property||roomOf(t)?`<span>🏢 ${esc([t.property,roomOf(t)].filter(Boolean).join(" "))}</span>`:""}
           ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
           ${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}
           ${t.category?`<span>${esc(t.category)}</span>`:""}
@@ -821,7 +822,10 @@ function openSheet(id){
       <div class="field"><label for="e-cat">カテゴリ</label><select id="e-cat" ${ro?"disabled":""}><option value="">なし</option>${CATS.map(c=>`<option ${c===t.category?"selected":""}>${c}</option>`).join("")}</select></div>
       <div class="field"><label for="e-pri">優先度</label><select id="e-pri" ${ro?"disabled":""}>${[["","なし"],["High","高"],["Medium","中"],["Low","低"]].map(([v,l])=>`<option value="${v}" ${v===(t.priority||"")?"selected":""}>${l}</option>`).join("")}</select></div>
     </div>
-    <div class="field"><label for="e-prop">物件名</label><input id="e-prop" list="propList" value="${esc(t.property||"")}" placeholder="例：パークタウンM" ${ro?"disabled":""}><datalist id="propList">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+    <div class="grid2 proproom">
+      <div class="field"><label for="e-prop">物件名</label><input id="e-prop" list="propList" value="${esc(t.property||"")}" placeholder="例：パークタウンM" ${ro?"disabled":""}><datalist id="propList">${props().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+      <div class="field"><label for="e-room">部屋番号</label><input id="e-room" list="roomList" value="${esc((t.report&&t.report.room)||"")}" placeholder="例：204 ／ 共用部" ${ro?"disabled":""}><datalist id="roomList"><option value="共用部"></datalist></div>
+    </div>
     <div class="field"><label for="e-client">依頼人</label><input id="e-client" list="clientList" value="${esc(t.client||"")}" placeholder="例：東建 一宮支店 野口様" ${ro?"disabled":""}><datalist id="clientList">${clients().map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
     ${isVendorTask(t)?`<div class="field"><label for="e-vendor">🔧 業者名</label><input id="e-vendor" list="vendorList" value="${esc((t.report&&t.report.vendor)||"")}" placeholder="例：正直屋" ${ro?"disabled":""}><datalist id="vendorList">${vendors().map(p=>`<option value="${esc(p)}">`).join("")}</datalist>
       ${ro||!vendors().length?"":`<div class="vchips">${vendors().slice(0,12).map(v=>`<button type="button" class="chip" data-vendor="${esc(v)}">${esc(v)}</button>`).join("")}</div><span class="small">一度入れた業者はここに出ます。押すと入ります。</span>`}</div>`:""}
@@ -934,6 +938,7 @@ function openSheet(id){
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
       report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(vIn)body.report.vendor=vIn.value.trim();
+    body.report.room=$("e-room").value.trim();
     const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";
     body.report=withDone(t,body.status,body.report);
     if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sName:$("r-sname").value.trim(),sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
@@ -997,7 +1002,7 @@ function openCinSheet(){
     if(!v.what){$("c-what").focus();return}
     $("c-save").disabled=true;$("c-save").textContent="登録中…";
     try{
-      apply(await api("apiSaveTask",{title:v.title,status:"未着手",assignees:$("c-who").value?[$("c-who").value]:[],property:v.prop,category:"事務",priority:"",due:$("c-due").value||"",memo:v.memo,attachments:[]}));
+      apply(await api("apiSaveTask",{title:v.title,status:"未着手",assignees:$("c-who").value?[$("c-who").value]:[],property:v.prop,category:"事務",priority:"",due:$("c-due").value||"",memo:v.memo,attachments:[],report:{room:$("c-room").value.trim()}}));
       close();toast("賃貸革命入力を登録しました");
     }catch(err){$("c-save").disabled=false;$("c-save").textContent="登録する";toast(errMsg(err))}
   });
