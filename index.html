@@ -790,7 +790,7 @@ function openProjectSheet(){
   $("p-name").focus();
 }
 
-function toast(m){const el=$("toast");el.innerHTML=kkEl("run")+`<span>${esc(m)}</span>`;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+function toast(m,ms){const el=$("toast");el.innerHTML=kkEl("run")+`<span>${esc(m)}</span>`;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,ms||2200)}
 
 function calUrl(t){
   if(!t.due)return "";const d=parseD(t.due);const n=new Date(d);n.setDate(n.getDate()+1);
@@ -883,19 +883,37 @@ function openSheet(id){
   drawAtts();
   const saveAtts=async()=>{if(id){try{apply(await api("apiSaveTask",{id,attachments:atts}))}catch(e){toast("添付の保存に失敗しました。もう一度お試しください")}}};
   const msg=m=>{const el=$("up-msg");if(!el)return;el.hidden=!m;el.textContent=m||""};
+  // 30枚くらいまとめて選んでも大丈夫なように：3枚ずつ同時に送る・失敗は2回まで自動でやり直す・1枚失敗しても残りは続ける
+  let saveChain=Promise.resolve(),saveWant=false;
+  const queueSave=()=>{if(!id||saveWant)return saveChain;saveWant=true;saveChain=saveChain.then(()=>{saveWant=false;return saveAtts()});return saveChain};
   const handle=async(files,kind)=>{
-    for(const f of files){
-      msg(`「${f.name}」をアップロード中…`);
-      try{const p=await prepFile(f);
-        if(p.type.startsWith("video/")){if(p.blob.size>30*1024*1024)throw fail("動画が大きすぎます（30MBまで）。30秒くらいまでの短い動画にしてください")}
-        else if(p.blob.size>20*1024*1024)throw fail("ファイルが大きすぎます（20MBまで）");
-        const dataUrl=await new Promise((ok,ng)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=ng;fr.readAsDataURL(p.blob)});
-        const r=await api("apiUpload",dataUrl,p.name,p.type);
-        if(p.type.startsWith("image/"))THUMBS[r.id]=dataUrl;
-        atts.push({id:r.id,name:p.name,type:p.type,kind,at:Date.now(),by:ME||""});drawAtts();await saveAtts();}
-      catch(err){msg("");toast(err&&err.userMsg?err.userMsg:"アップロードできませんでした。通信状況を確認してもう一度お試しください");return}
-    }
-    msg("");toast(id?"添付しました":"添付しました（保存を押すと登録されます）");
+    if(!files.length)return;
+    const total=files.length,res=new Array(total),failed=[];let done=0,next=0,pushed=0;
+    const show=()=>msg(total===1?`「${files[0].name}」をアップロード中…`:`アップロード中… ${done}／${total}枚（画面を閉じずにお待ちください）`);
+    const warn=e=>{e.preventDefault();e.returnValue=""};window.addEventListener("beforeunload",warn);
+    const one=async f=>{
+      const p=await prepFile(f);
+      if(p.type.startsWith("video/")){if(p.blob.size>30*1024*1024)throw fail("動画が大きすぎます（30MBまで）。30秒くらいまでの短い動画にしてください")}
+      else if(p.blob.size>20*1024*1024)throw fail("ファイルが大きすぎます（20MBまで）");
+      const dataUrl=await new Promise((ok,ng)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=ng;fr.readAsDataURL(p.blob)});
+      let r,last;
+      for(let t=0;t<3;t++){try{r=await api("apiUpload",dataUrl,p.name,p.type);break}catch(e){last=e;await new Promise(ok=>setTimeout(ok,1500*(t+1)))}}
+      if(!r)throw last;
+      if(p.type.startsWith("image/"))THUMBS[r.id]=dataUrl;
+      return {id:r.id,name:p.name,type:p.type,kind,at:Date.now(),by:ME||""};
+    };
+    // 選んだ順番どおりに並ぶよう、前の写真がそろった分から追加する
+    const flush=()=>{let add=false;while(pushed<total&&res[pushed]!==undefined){if(res[pushed])atts.push(res[pushed]);add=true;pushed++}
+      if(add){drawAtts();queueSave()}};
+    const worker=async()=>{while(next<total){const i=next++,f=files[i];
+      try{res[i]=await one(f)}catch(err){res[i]=null;failed.push({name:f.name,why:err&&err.userMsg})}
+      done++;show();flush()}};
+    show();
+    try{await Promise.all(Array.from({length:Math.min(3,total)},worker));await saveChain}
+    finally{window.removeEventListener("beforeunload",warn);msg("")}
+    if(!failed.length){toast(id?(total>1?`${total}枚 添付しました`:"添付しました"):"添付しました（保存を押すと登録されます）");return}
+    const ok=total-failed.length,why=failed.find(x=>x.why);
+    toast(`${ok}枚 添付しました。${failed.length}枚はアップロードできませんでした（${failed.slice(0,3).map(x=>x.name).join("、")}${failed.length>3?" ほか":""}）。`+(why?why.why:"電波のよい所で、その写真だけもう一度選んでください"),8000);
   };
   if($("in-file"))$("in-file").addEventListener("change",e=>{handle([...e.target.files],"file");e.target.value=""});
   if($("in-report"))$("in-report").addEventListener("change",e=>{handle([...e.target.files],"report");e.target.value=""});
