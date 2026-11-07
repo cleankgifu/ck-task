@@ -353,6 +353,20 @@ header .hright{flex-basis:100%}
 .kk-empty{display:flex;flex-direction:column;align-items:center;gap:6px}
 .kk-empty .kk{width:110px;height:100px;opacity:.95}
 .toast{display:flex;align-items:center;gap:8px}
+#viewer{position:fixed;inset:0;z-index:60;background:rgba(20,16,14,.92);display:flex;flex-direction:column}
+#viewer .vbar{display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff}
+#viewer .vname{flex:1;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewer .vbtn{font:inherit;font-weight:700;font-size:.9rem;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;text-decoration:none;cursor:pointer}
+#viewer .vbody{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:0 8px 12px}
+#viewer .vbody img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+#viewer .vbody iframe{width:100%;height:100%;border:0;background:#fff;border-radius:6px}
+#viewer .vnav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-size:2rem;cursor:pointer}
+#viewer .vnav.prev{left:6px}#viewer .vnav.next{right:6px}
+.patts{margin:6px 0 2px}.patts summary{cursor:pointer;font-weight:700;font-size:.92rem;padding:4px 0}
+.patt a{display:block;position:relative;text-decoration:none}
+.patt img,.patt .vico{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:1.8rem}
+.patt .ptag{position:absolute;left:3px;bottom:3px;font-size:.62rem;font-weight:700;background:var(--ink);color:var(--bg);border-radius:4px;padding:1px 4px}
+
 #undoBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(124px + env(safe-area-inset-bottom,0px));z-index:31;font:inherit;font-weight:700;font-size:1rem;padding:10px 18px;border-radius:999px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;line-height:1.3;cursor:pointer;max-width:90vw}
 #undoBtn small{font-size:.72rem;font-weight:500;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80vw}
 #undoBtn[hidden]{display:none}
@@ -438,6 +452,7 @@ header .hright{flex-basis:100%}
   </div>
 
   <div id="projView" hidden>
+    <div class="ordbar"><button type="button" class="btn small-btn" id="pordToggle" aria-pressed="false">↕ 並べ替え</button><button type="button" class="btn small-btn" id="pordReset" hidden>自動の並びに戻す</button><span class="small" id="pordHint"></span></div>
     <div id="projList" class="projlist"><div class="empty card">読み込んでいます…</div></div>
   </div>
 </div>
@@ -477,6 +492,7 @@ const grp=t=>DONE.has(t.status)?2:WAIT_ST.has(t.status)?1:0;
 // 手で並べ替えた順番は report.ord に入れる（みんなで同じ順番になる）
 const ordOf=t=>{const o=t.report&&t.report.ord;return o===undefined||o===null||o===""||isNaN(Number(o))?null:Number(o)};
 let REORDER=false;const PEND={};let ordTimer=null,ordBusy=false;
+let PREORDER=false,PLIST=[];const POVR={};let pordTimer=null,pordBusy=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let ASSETS=true,canWrite=true,tasks=[],loaded=false,ME="",PEOPLE=[];const THUMBS={};
@@ -728,16 +744,23 @@ function renderProjects(){
   const list=projects.map(p=>{const steps=tasks.filter(t=>t.projectId===p.id).sort((a,b)=>(a.step||0)-(b.step||0));
     const done=steps.filter(t=>DONE.has(t.status)).length;return {p,steps,done,finished:steps.length>0&&done===steps.length}})
     .filter(x=>!F.who||x.steps.some(t=>(t.assignees||[]).includes(F.who)))
-    .sort((a,b)=>(a.finished-b.finished)||((b.p.createdAt||0)-(a.p.createdAt||0)));
+    .sort((a,b)=>{if(a.finished!==b.finished)return a.finished-b.finished;const oa=pordOf(a.p),ob=pordOf(b.p);
+      if((oa===null)!==(ob===null))return oa===null?-1:1;if(oa!==null&&oa!==ob)return oa-ob;return (b.p.createdAt||0)-(a.p.createdAt||0)});
+  PLIST=list;
+  $("pordToggle").setAttribute("aria-pressed",String(PREORDER));$("pordToggle").textContent=PREORDER?"✓ 並べ替え終了":"↕ 並べ替え";
+  $("pordReset").hidden=!PREORDER;$("pordHint").textContent=PREORDER?"▲▼で順番を変えられます（全員に同じ順で出ます）":"";
   $("count").textContent=`${list.length}件のプロジェクト`;
   if(!list.length){$("projList").innerHTML=`<div class="empty card">${projects.length?"この人が関わるプロジェクトはありません。":"まだプロジェクトがありません。右下の「＋ プロジェクト作成」から、工程と担当を決めて作れます。"}</div>`;return}
-  $("projList").innerHTML=list.map(({p,steps,done,finished})=>{
+  $("projList").innerHTML=list.map(({p,steps,done,finished},pi)=>{
     const cur=steps.find(t=>!DONE.has(t.status));
+    const patts=[];steps.forEach(t=>(t.attachments||[]).forEach(a=>patts.push({...a,_from:t.title.replace(/^【.*?】/,"")})));
+    const nUnf=list.filter(x=>!x.finished).length;
     return `<article class="proj card ${finished?"finished":""}">
       <div class="proj-head"><div><h3>${esc(p.name)}</h3>${p.property?`<span class="small">🏢 ${esc(p.property)}</span>`:""}</div>
-        <span class="prog"><b>${done}</b>/${steps.length}</span></div>
+        ${PREORDER&&!finished?`<span class="mv"><button data-pmv="up" data-pid="${esc(p.id)}" aria-label="上へ" ${pi===0?"disabled":""}>▲</button><button data-pmv="down" data-pid="${esc(p.id)}" aria-label="下へ" ${pi>=nUnf-1?"disabled":""}>▼</button></span>`:`<span class="prog"><b>${done}</b>/${steps.length}</span>`}</div>
       <div class="bar"><i style="width:${steps.length?Math.round(done/steps.length*100):0}%"></i></div>
       <p class="small">${finished?"すべての工程が終わりました":cur?`いまの担当：<b>${esc((cur.assignees||[]).join("・")||"未定")}</b>（${esc(cur.title.replace(/^【.*?】/,""))}）`:"工程がありません"}</p>
+      ${patts.length?`<details class="patts"><summary>📎 資料・写真（${patts.length}）</summary><div class="atts">${patts.map((a,i)=>attThumb(a,i,"p:"+p.id)).join("")}</div></details>`:""}
       <ol class="steps">${steps.map(t=>`<li class="${DONE.has(t.status)?"s-done":t===cur?"s-cur":"s-wait"}"><button class="open" data-id="${esc(t.id)}">
         <span class="num">${DONE.has(t.status)?"✓":(t.step||0)+1}</span>
         <span class="main"><span class="st-title">${esc(t.title.replace(/^【.*?】/,""))}</span>
@@ -885,7 +908,8 @@ function openSheet(id){
   const close=()=>{$("sheetHost").innerHTML=""};
   const drawAtts=()=>{for(const k of ["file","report","before"]){const box=$("att-"+k);if(!box)continue;const list=atts.filter(a=>a.kind===k);
     box.innerHTML=list.length?list.map(a=>{const u="https:/"+"/drive.google.com/file/d/"+encodeURIComponent(a.id)+"/view";const img=String(a.type).startsWith("image/");
-      return `<div class="att">${img?`<a href="${u}" target="_blank" rel="noopener"><img src="${THUMBS[a.id]||""}" data-thumb="${esc(a.id)}" alt="${esc(a.name)}"></a>`:`<a class="doc" href="${u}" target="_blank" rel="noopener">${String(a.type).startsWith("video/")?"🎬":"📄"} ${esc(a.name)}</a>`}${up?`<button type="button" class="x" data-rm="${esc(a.id)}" aria-label="${esc(a.name)}を外す">×</button>`:""}</div>`}).join("")
+      const va=`data-vatt="${esc(a.id)}" data-vtype="${esc(a.type)}" data-vname="${esc(a.name)}"`;
+      return `<div class="att">${img?`<a href="${u}" ${va} target="_blank" rel="noopener"><img src="${THUMBS[a.id]||""}" data-thumb="${esc(a.id)}" alt="${esc(a.name)}"></a>`:`<a class="doc" href="${u}" ${va} target="_blank" rel="noopener">${String(a.type).startsWith("video/")?"🎬":"📄"} ${esc(a.name)}</a>`}${up?`<button type="button" class="x" data-rm="${esc(a.id)}" aria-label="${esc(a.name)}を外す">×</button>`:""}</div>`}).join("")
       :`<span class="small">${k==="file"?"なし":"まだありません"}</span>`}
     const need=atts.filter(a=>String(a.type).startsWith("image/")&&!(a.id in THUMBS)).map(a=>a.id);
     if(need.length)api("apiThumbs",need).then(m=>{Object.assign(THUMBS,m);document.querySelectorAll("img[data-thumb]").forEach(im=>{const s=THUMBS[im.dataset.thumb];if(s)im.src=s})}).catch(()=>{});};
@@ -1160,7 +1184,46 @@ $("list").addEventListener("click",async e=>{
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;a.disabled=true;
     try{apply(await api("apiSaveTask",{id:t.id,status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))}));toast("アーカイブしました")}catch(err){a.disabled=false;toast(errMsg(err))}return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
+
+// ▼ プロジェクトの並べ替え（順番はプロジェクトの最初の工程のタスクの report.pord に入れる）
+function anchorOf(pid){return tasks.filter(t=>t.projectId===pid).sort((a,b)=>(a.step||0)-(b.step||0))[0]||null}
+function pordOf(p){if(p.id in POVR)return POVR[p.id];const a=anchorOf(p.id);const o=a&&a.report?a.report.pord:undefined;return typeof o==="number"?o:null}
+function moveProj(pid,dir){const list=PLIST.filter(x=>!x.finished).map(x=>x.p);const i=list.findIndex(p=>p.id===pid),j=dir==="up"?i-1:i+1;
+  if(i<0||j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];
+  list.forEach((p,k)=>{const o=(k+1)*10;if(pordOf(p)!==o)POVR[p.id]=o});render();queuePord()}
+function queuePord(){clearTimeout(pordTimer);pordTimer=setTimeout(flushPord,1200)}
+async function flushPord(){if(pordBusy){queuePord();return}const ids=Object.keys(POVR);if(!ids.length)return;pordBusy=true;let last=null,ng=0;
+  for(const pid of ids){const o=POVR[pid];const a=anchorOf(pid);if(!a){delete POVR[pid];continue}
+    const rep={...(a.report||{})};if(o===null)delete rep.pord;else rep.pord=o;
+    try{last=await api("apiSaveTask",{id:a.id,report:rep});a.report=rep;if(POVR[pid]===o)delete POVR[pid]}catch(e){ng++}}
+  pordBusy=false;if(last)apply(last);
+  if(ng){toast("並び順の保存に失敗したものがあります。もう一度お試しください");Object.keys(POVR).forEach(k=>delete POVR[k]);render()}
+  else if(Object.keys(POVR).length)queuePord();else toast("並び順を保存しました")}
+$("pordToggle").addEventListener("click",()=>{PREORDER=!PREORDER;render()});
+$("pordReset").addEventListener("click",e=>{const b=e.currentTarget;
+  if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="本当に戻す（新しい順になります）";setTimeout(()=>{b.dataset.armed="";b.textContent="自動の並びに戻す"},4000);return}
+  b.dataset.armed="";b.textContent="自動の並びに戻す";projects.forEach(p=>{if(pordOf(p)!==null)POVR[p.id]=null});render();queuePord()});
+
+// ▼ 資料・写真をアプリの中で見る
+function attThumb(a,i){const img=String(a.type).startsWith("image/"),vid=String(a.type).startsWith("video/"),pdf=a.type==="application/pdf";
+  const tag=a.kind==="before"?"作業前":a.kind==="report"?"完成":"資料";
+  const th=(img||pdf)?`<img src="https:/`+`/drive.google.com/thumbnail?id=${encodeURIComponent(a.id)}&sz=w200" alt="${esc(a.name)}" loading="lazy">`:`<span class="vico">${vid?"🎬":"📄"}</span>`;
+  return `<div class="att patt"><a href="https:/`+`/drive.google.com/file/d/${encodeURIComponent(a.id)}/view" target="_blank" rel="noopener" data-vatt="${esc(a.id)}" data-vtype="${esc(a.type)}" data-vname="${esc(a.name)}" title="${esc(a._from||"")}">${th}<span class="ptag">${tag}</span></a></div>`}
+function openViewer(items,idx){
+  let i=idx;const v=document.createElement("div");v.id="viewer";v.setAttribute("role","dialog");v.setAttribute("aria-modal","true");document.body.appendChild(v);
+  const draw=()=>{const it=items[i];const id=encodeURIComponent(it.id);const img=String(it.type).startsWith("image/");
+    const body=img?`<img src="https:/`+`/drive.google.com/thumbnail?id=${id}&sz=w2000" alt="${esc(it.name)}">`:`<iframe src="https:/`+`/drive.google.com/file/d/${id}/preview" allow="autoplay" title="${esc(it.name)}"></iframe>`;
+    v.innerHTML=`<div class="vbar"><span class="vname">${esc(it.name)}${items.length>1?`（${i+1}/${items.length}）`:""}</span><a class="vbtn" href="https:/`+`/drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">別画面</a><button class="vbtn" data-vx>✕ 閉じる</button></div>
+      <div class="vbody">${body}</div>${items.length>1?`<button class="vnav prev" data-vp aria-label="前へ">‹</button><button class="vnav next" data-vn aria-label="次へ">›</button>`:""}`};
+  draw();
+  v.addEventListener("click",e=>{if(e.target.closest("[data-vx]")||e.target===v){v.remove();return}
+    if(e.target.closest("[data-vp]")){i=(i-1+items.length)%items.length;draw()}else if(e.target.closest("[data-vn]")){i=(i+1)%items.length;draw()}});
+}
+document.addEventListener("click",e=>{const a=e.target.closest("a[data-vatt]");if(!a)return;e.preventDefault();e.stopPropagation();
+  const root=a.closest(".sheet,article,.card")||document;const all=[...root.querySelectorAll("a[data-vatt]")];
+  openViewer(all.map(x=>({id:x.dataset.vatt,type:x.dataset.vtype,name:x.dataset.vname})),Math.max(0,all.indexOf(a)))},true);
 $("projList").addEventListener("click",async e=>{
+  const pm=e.target.closest("[data-pmv]");if(pm){moveProj(pm.dataset.pid,pm.dataset.pmv);return}
   const as=e.target.closest("[data-addstep]");if(as){openAddStep(as.dataset.addstep);return}
   const rn=e.target.closest("[data-renproj]");if(rn){openRenameProject(rn.dataset.renproj);return}
   const d=e.target.closest("[data-delproj]");
@@ -1222,7 +1285,7 @@ fillSelects();paintKK();$("kkBuddy").addEventListener("click",()=>{kkTap++;rende
   function regard(){try{history.pushState({ck:"guard"},"")}catch(_){}}
   window.addEventListener("popstate",function(){
     if(exiting)return;
-    var pin=document.getElementById("pinBox");
+    var vw=document.getElementById("viewer");if(vw){vw.remove();regard();return}
     if(host&&host.innerHTML.trim()){host.innerHTML="";regard();return}
     if(viewStack.length){VIEW=viewStack.pop();try{localStorage.setItem("ckview",VIEW)}catch(_){}render();regard();return}
     var now=Date.now();
