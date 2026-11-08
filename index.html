@@ -480,7 +480,7 @@ const PRESETS={
 };
 let projects=[],notes=[],VIEW="tasks",NQ="";
 try{const v=localStorage.getItem("ckview");VIEW=(v==="projects"||v==="notes")?v:"tasks"}catch(_){}
-const CATS=["管理","工事","東建","事務","民泊清掃","情報共有"];
+const CATS=["管理","工事","東建工事","事務","民泊清掃","情報共有"];
 const BASE_PEOPLE=["吉田","森","宮脇","浅井","姫野","冨田","栗田","民泊","アズル","情報共有"];
 const BASE_PROPS=["パークタウンM","UR緑苑東","第二ヴィラあさの"];
 const STCLASS=s=>({"未着手":"todo","進行中":"doing","前工程待ち":"next","施工日決定待ち":"wait","施工待ち":"wait","見積送信済":"wait","未確認":"check","確認済み":"done","完了":"done","完了 請求書作成":"done","完了アーカイブ":"arch","確認済みアーカイブ":"arch","保留":"hold"}[s]||"todo");
@@ -631,7 +631,7 @@ function row(t,i,n){
       </span></button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
 
-var NDEPTS=["全体","管理","工事","東建","事務","民泊清掃"];
+var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
 var NF={dept:"",arc:"open"};
 function fmtTime(ms){if(!ms)return "";var d=new Date(Number(ms));return [d.getFullYear(),d.getMonth()+1,d.getDate()].join(".")+" "+String(d.getHours())+":"+("0"+d.getMinutes()).slice(-2)}
 function notePeople(){return people().filter(function(p){return p!=="情報共有"&&p!=="民泊"})}
