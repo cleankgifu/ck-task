@@ -353,6 +353,13 @@ header .hright{flex-basis:100%}
 .kk-empty{display:flex;flex-direction:column;align-items:center;gap:6px}
 .kk-empty .kk{width:110px;height:100px;opacity:.95}
 .toast{display:flex;align-items:center;gap:8px}
+.lnks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.lnk{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 10px;max-width:100%}
+.lnk a{color:var(--accent);font-weight:700;text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw}
+.lnk .x{position:static;width:22px;height:22px}
+.lnkadd{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+@media (min-width:600px){.lnkadd{grid-template-columns:2fr 2fr auto}}
+
 #viewer{position:fixed;inset:0;z-index:60;background:rgba(20,16,14,.92);display:flex;flex-direction:column}
 #viewer .vbar{display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff}
 #viewer .vname{flex:1;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -621,6 +628,7 @@ function row(t,i,n){
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
           ${t.property||roomOf(t)?`<span>🏢 ${esc([t.property,roomOf(t)].filter(Boolean).join(" "))}</span>`:""}
           ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
+          ${t.report&&t.report.links&&t.report.links.length?`<span>🔗 リンク${t.report.links.length}</span>`:""}
           ${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}
           ${t.category?`<span>${esc(t.category)}</span>`:""}
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
@@ -754,13 +762,14 @@ function renderProjects(){
   $("projList").innerHTML=list.map(({p,steps,done,finished},pi)=>{
     const cur=steps.find(t=>!DONE.has(t.status));
     const patts=[];steps.forEach(t=>(t.attachments||[]).forEach(a=>patts.push({...a,_from:t.title.replace(/^【.*?】/,"")})));
+    const plinks=[];steps.forEach(t=>((t.report&&t.report.links)||[]).forEach(l=>l&&l.url&&plinks.push(l)));
     const nUnf=list.filter(x=>!x.finished).length;
     return `<article class="proj card ${finished?"finished":""}">
       <div class="proj-head"><div><h3>${esc(p.name)}</h3>${p.property?`<span class="small">🏢 ${esc(p.property)}</span>`:""}</div>
         ${PREORDER&&!finished?`<span class="mv"><button data-pmv="up" data-pid="${esc(p.id)}" aria-label="上へ" ${pi===0?"disabled":""}>▲</button><button data-pmv="down" data-pid="${esc(p.id)}" aria-label="下へ" ${pi>=nUnf-1?"disabled":""}>▼</button></span>`:`<span class="prog"><b>${done}</b>/${steps.length}</span>`}</div>
       <div class="bar"><i style="width:${steps.length?Math.round(done/steps.length*100):0}%"></i></div>
       <p class="small">${finished?"すべての工程が終わりました":cur?`いまの担当：<b>${esc((cur.assignees||[]).join("・")||"未定")}</b>（${esc(cur.title.replace(/^【.*?】/,""))}）`:"工程がありません"}</p>
-      ${patts.length?`<details class="patts"><summary>📎 資料・写真（${patts.length}）</summary><div class="atts">${patts.map((a,i)=>attThumb(a,i,"p:"+p.id)).join("")}</div></details>`:""}
+      ${patts.length||plinks.length?`<details class="patts"><summary>📎 資料・写真・リンク（${patts.length+plinks.length}）</summary>${patts.length?`<div class="atts">${patts.map((a,i)=>attThumb(a,i,"p:"+p.id)).join("")}</div>`:""}${plinks.length?`<div class="lnks">${plinks.map(l=>`<span class="lnk"><a href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.title||l.url.replace(/^https?:\/\//,"").slice(0,40))}</a></span>`).join("")}</div>`:""}</details>`:""}
       <ol class="steps">${steps.map(t=>`<li class="${DONE.has(t.status)?"s-done":t===cur?"s-cur":"s-wait"}"><button class="open" data-id="${esc(t.id)}">
         <span class="num">${DONE.has(t.status)?"✓":(t.step||0)+1}</span>
         <span class="main"><span class="st-title">${esc(t.title.replace(/^【.*?】/,""))}</span>
@@ -863,9 +872,12 @@ function openSheet(id){
       ${ro||!vendors().length?"":`<div class="vchips">${vendors().slice(0,12).map(v=>`<button type="button" class="chip" data-vendor="${esc(v)}">${esc(v)}</button>`).join("")}</div><span class="small">一度入れた業者はここに出ます。押すと入ります。</span>`}</div>`:""}
     <div class="field"><span class="lab">担当</span><div class="people" id="e-people">${people().map((p,i)=>`<label><input type="checkbox" id="e-p${i}" value="${esc(p)}" ${(t.assignees||[]).includes(p)?"checked":""} ${ro?"disabled":""}>${esc(p)}</label>`).join("")}</div>
       ${ro?"":`<div class="row"><input id="e-newp" placeholder="担当者を追加（名前）" style="flex:1"><button type="button" class="btn" id="e-addp">追加</button></div>`}</div>
-    <div class="field"><label for="e-memo">メモ</label><textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea></div>
-    <div class="field"><span class="lab">資料（写真・PDF・動画）</span><div class="atts" id="att-file"></div>
-      ${up?`<label class="btn upl">＋ 資料を添付（写真・PDF・動画）<input type="file" id="in-file" accept="image/${"*"},video/${"*"},application/pdf,.csv,.txt" multiple hidden></label>`:""}</div>
+    <div class="field"><label for="e-memo">メモ</label><textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea>
+      <div class="lnks" id="memo-links"></div></div>
+    <div class="field linkbox"><span class="lab">資料（写真・PDF・動画・リンク）</span><div class="atts" id="att-file"></div>
+      <div class="lnks" id="e-links"></div>
+      ${!ro?`<div class="row">${up?`<label class="btn upl">＋ 資料を添付（写真・PDF・動画）<input type="file" id="in-file" accept="image/${"*"},video/${"*"},application/pdf,.csv,.txt" multiple hidden></label>`:""}<button type="button" class="btn upl" id="l-open">🔗 リンクを貼る</button></div>
+      <div class="lnkadd" id="l-box" hidden><input id="l-url" type="url" inputmode="url" placeholder="https://… を貼り付け"><input id="l-title" placeholder="名前（例：このページを見てください）"><button type="button" class="btn" id="l-add">＋ 追加</button></div>`:""}</div>
     <div class="field ba"><span class="lab">📷 作業の写真（ビフォー・アフター）</span>
       <div class="bagrid">
         <div class="bacol bef"><b class="batag">作業前 <small>BEFORE</small></b><div class="atts" id="att-before"></div>
@@ -906,11 +918,22 @@ function openSheet(id){
       ${ro?"":`<button type="submit" class="btn primary" id="e-save">保存</button>`}
     </div></form></div>`;
   const close=()=>{$("sheetHost").innerHTML=""};
+  let LINKS=[...(((t.report||{}).links)||[])].filter(l=>l&&l.url);
+  const lnkHtml=(l,i,rm)=>`<span class="lnk"><a href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.title||l.url.replace(/^https?:\/\//,"").slice(0,40))}</a>${rm&&!ro?`<button type="button" class="x" data-lrm="${i}" aria-label="リンクを外す">×</button>`:""}</span>`;
+  const drawLinks=()=>{const b=$("e-links");if(!b)return;b.innerHTML=LINKS.map((l,i)=>lnkHtml(l,i,true)).join("")};
+  const drawMemoLinks=()=>{const b=$("memo-links");if(!b)return;const us=[...new Set(($("e-memo").value.match(/https?:\/\/[^\s　、。）)」]+/g)||[]))];b.innerHTML=us.map(u=>lnkHtml({url:u},0,false)).join("")};
+  setTimeout(()=>{drawLinks();drawMemoLinks();
+    $("e-memo")&&$("e-memo").addEventListener("input",drawMemoLinks);
+    $("e-links")&&$("e-links").addEventListener("click",e=>{const b=e.target.closest("[data-lrm]");if(!b)return;LINKS.splice(Number(b.dataset.lrm),1);drawLinks()});
+    $("l-open")&&$("l-open").addEventListener("click",()=>{$("l-box").hidden=false;$("l-url").focus()});
+    $("l-add")&&$("l-add").addEventListener("click",()=>{let u=$("l-url").value.trim();if(!u){$("l-url").focus();return}
+      if(!/^https?:\/\//i.test(u))u="https://"+u;LINKS.push({url:u,title:$("l-title").value.trim()});$("l-url").value="";$("l-title").value="";drawLinks();toast("リンクを追加しました（保存を押すと残ります）")});
+  },0);
   const drawAtts=()=>{for(const k of ["file","report","before"]){const box=$("att-"+k);if(!box)continue;const list=atts.filter(a=>a.kind===k);
     box.innerHTML=list.length?list.map(a=>{const u="https:/"+"/drive.google.com/file/d/"+encodeURIComponent(a.id)+"/view";const img=String(a.type).startsWith("image/");
       const va=`data-vatt="${esc(a.id)}" data-vtype="${esc(a.type)}" data-vname="${esc(a.name)}"`;
       return `<div class="att">${img?`<a href="${u}" ${va} target="_blank" rel="noopener"><img src="${THUMBS[a.id]||""}" data-thumb="${esc(a.id)}" alt="${esc(a.name)}"></a>`:`<a class="doc" href="${u}" ${va} target="_blank" rel="noopener">${String(a.type).startsWith("video/")?"🎬":"📄"} ${esc(a.name)}</a>`}${up?`<button type="button" class="x" data-rm="${esc(a.id)}" aria-label="${esc(a.name)}を外す">×</button>`:""}</div>`}).join("")
-      :`<span class="small">${k==="file"?"なし":"まだありません"}</span>`}
+      :(k==="file"?"":`<span class="small">まだありません</span>`)}
     const need=atts.filter(a=>String(a.type).startsWith("image/")&&!(a.id in THUMBS)).map(a=>a.id);
     if(need.length)api("apiThumbs",need).then(m=>{Object.assign(THUMBS,m);document.querySelectorAll("img[data-thumb]").forEach(im=>{const s=THUMBS[im.dataset.thumb];if(s)im.src=s})}).catch(()=>{});};
   drawAtts();
@@ -990,6 +1013,8 @@ function openSheet(id){
       report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
     if(vIn)body.report.vendor=vIn.value.trim();
     body.report.room=$("e-room").value.trim();
+    {const pu=$("l-url")&&$("l-url").value.trim();if(pu&&/^https?:\/\//i.test(pu))LINKS.push({url:pu,title:$("l-title").value.trim()});}
+    body.report.links=LINKS;
     const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";
     body.report=withDone(t,body.status,body.report);
     if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sName:$("r-sname").value.trim(),sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
