@@ -353,6 +353,9 @@ header .hright{flex-basis:100%}
 .kk-empty{display:flex;flex-direction:column;align-items:center;gap:6px}
 .kk-empty .kk{width:110px;height:100px;opacity:.95}
 .toast{display:flex;align-items:center;gap:8px}
+.pmemo{white-space:pre-wrap;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:.92rem;line-height:1.55;word-break:break-word}
+.pmemo a{color:var(--accent);font-weight:700}
+
 .lnks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .lnk{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 10px;max-width:100%}
 .lnk a{color:var(--accent);font-weight:700;text-decoration:underline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw}
@@ -730,22 +733,30 @@ function openAddStep(pid){
     try{apply(await api("apiAddStep",pid,{title:$("a-title").value.trim(),assignee:$("a-who").value,due:$("a-due").value,pos:Number($("a-pos").value)}));close();toast("工程を追加しました")}
     catch(err){b.disabled=false;b.textContent="追加する";toast(errMsg(err))}});
 }
+// プロジェクト全体のメモ（工程のタスクの report.pmemo に入れる。いちばん新しいものを使う）
+function pmemoOf(pid){let best=null;tasks.forEach(t=>{if(t.projectId!==pid||!t.report||typeof t.report.pmemo!=="string")return;if(!best||(t.report.pmemoAt||0)>(best.report.pmemoAt||0))best=t});return best?best.report.pmemo:""}
+function linkify(txt){return esc(txt).replace(/https?:\/\/[^\s　、。）)」<]+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u}</a>`)}
 function openRenameProject(pid){
   var p=projects.find(function(x){return x.id===pid});if(!p)return;
-  var h='<div class="sheet-bg" id="bg"><form class="sheet" id="rform" role="dialog" aria-modal="true" aria-label="プロジェクトの名前を変更">';
-  h+='<h2>✏️ プロジェクトの名前を変更</h2>';
+  var memo0=pmemoOf(pid);
+  var h='<div class="sheet-bg" id="bg"><form class="sheet" id="rform" role="dialog" aria-modal="true" aria-label="プロジェクトを編集">';
+  h+='<h2>✏️ プロジェクトを編集</h2>';
   h+='<div class="field"><label for="r-name">プロジェクト名</label><input id="r-name" required value="'+esc(p.name)+'"></div>';
   h+='<div class="field"><label for="r-prop">物件名</label><input id="r-prop" list="propListR" value="'+esc(p.property||"")+'"><datalist id="propListR">'+props().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist></div>';
-  h+='<p class="small">各工程のタスク名（【'+esc(p.name)+'】の部分）と物件名も、まとめて変わります。</p>';
-  h+='<div class="actions"><span class="spacer"></span><button type="button" class="btn" id="r-cancel">キャンセル</button><button type="submit" class="btn primary" id="r-save">変更する</button></div></form></div>';
+  h+='<div class="field"><label for="r-pmemo">プロジェクトのメモ（全員に見えます）</label><textarea id="r-pmemo" rows="6" placeholder="例：鍵はキーボックス 1234／オーナー平井さんの了承済み／注意点など">'+esc(memo0)+'</textarea></div>';
+  h+='<p class="small">名前・物件名を変えると、各工程のタスク名（【'+esc(p.name)+'】の部分）と物件名もまとめて変わります。</p>';
+  h+='<div class="actions"><span class="spacer"></span><button type="button" class="btn" id="r-cancel">キャンセル</button><button type="submit" class="btn primary" id="r-save">保存</button></div></form></div>';
   $("sheetHost").innerHTML=h;
   var close=function(){$("sheetHost").innerHTML=''};
   $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
   $("r-cancel").onclick=close;
   $("rform").addEventListener("submit",async function(e){e.preventDefault();var n=$("r-name").value.trim();if(!n){$("r-name").focus();return}
     var b=$("r-save");b.disabled=true;b.textContent="変更中…";
-    try{apply(await api("apiRenameProject",pid,n,$("r-prop").value.trim()));close();toast("名前を変更しました")}
-    catch(err){b.disabled=false;b.textContent="変更する";toast(errMsg(err))}});
+    try{var np=$("r-prop").value.trim(),nm=$("r-pmemo").value;
+      if(n!==p.name||np!==(p.property||""))apply(await api("apiRenameProject",pid,n,np));
+      if(nm!==memo0){var a=anchorOf(pid);if(a){var rep2=Object.assign({},a.report||{},{pmemo:nm,pmemoAt:Date.now()});apply(await api("apiSaveTask",{id:a.id,report:rep2}))}}
+      close();toast("プロジェクトを更新しました")}
+    catch(err){b.disabled=false;b.textContent="保存";toast(errMsg(err))}});
   $("r-name").focus();
 }
 function renderProjects(){
@@ -767,6 +778,7 @@ function renderProjects(){
     return `<article class="proj card ${finished?"finished":""}">
       <div class="proj-head"><div><h3>${esc(p.name)}</h3>${p.property?`<span class="small">🏢 ${esc(p.property)}</span>`:""}</div>
         ${PREORDER&&!finished?`<span class="mv"><button data-pmv="up" data-pid="${esc(p.id)}" aria-label="上へ" ${pi===0?"disabled":""}>▲</button><button data-pmv="down" data-pid="${esc(p.id)}" aria-label="下へ" ${pi>=nUnf-1?"disabled":""}>▼</button></span>`:`<span class="prog"><b>${done}</b>/${steps.length}</span>`}</div>
+      ${pmemoOf(p.id)?`<div class="pmemo">📝 ${linkify(pmemoOf(p.id))}</div>`:""}
       <div class="bar"><i style="width:${steps.length?Math.round(done/steps.length*100):0}%"></i></div>
       <p class="small">${finished?"すべての工程が終わりました":cur?`いまの担当：<b>${esc((cur.assignees||[]).join("・")||"未定")}</b>（${esc(cur.title.replace(/^【.*?】/,""))}）`:"工程がありません"}</p>
       ${patts.length||plinks.length?`<details class="patts"><summary>📎 資料・写真・リンク（${patts.length+plinks.length}）</summary>${patts.length?`<div class="atts">${patts.map((a,i)=>attThumb(a,i,"p:"+p.id)).join("")}</div>`:""}${plinks.length?`<div class="lnks">${plinks.map(l=>`<span class="lnk"><a href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.title||l.url.replace(/^https?:\/\//,"").slice(0,40))}</a></span>`).join("")}</div>`:""}</details>`:""}
@@ -774,7 +786,7 @@ function renderProjects(){
         <span class="num">${DONE.has(t.status)?"✓":(t.step||0)+1}</span>
         <span class="main"><span class="st-title">${esc(t.title.replace(/^【.*?】/,""))}</span>
         <span class="meta"><span>👤 ${esc((t.assignees||[]).join("・")||"未定")}</span>${t.report&&t.report.vendor?`<span>🔧 ${esc(t.report.vendor)}</span>`:""}${t.due?`<span>${fmtDue(t.due)}</span>`:""}<span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span></span></span></button></li>`).join("")}</ol>
-      ${canWrite?`<div class="actions"><button class="btn small-btn" data-addstep="${esc(p.id)}">＋ 工程を追加</button><button class="btn small-btn" data-renproj="${esc(p.id)}">✏️ 名前を変更</button><span class="spacer"></span><button class="btn danger small-btn" data-delproj="${esc(p.id)}">プロジェクトを削除</button></div>`:""}
+      ${canWrite?`<div class="actions"><button class="btn small-btn" data-addstep="${esc(p.id)}">＋ 工程を追加</button><button class="btn small-btn" data-renproj="${esc(p.id)}">✏️ 編集（名前・メモ）</button><span class="spacer"></span><button class="btn danger small-btn" data-delproj="${esc(p.id)}">プロジェクトを削除</button></div>`:""}
     </article>`}).join("");
 }
 
