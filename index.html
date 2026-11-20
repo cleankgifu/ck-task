@@ -211,6 +211,15 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .vchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .calbox{display:flex;flex-direction:column;gap:4px}
 .small{font-size:.78rem;color:var(--muted)}
+#upBox{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:40;width:min(92vw,360px);box-sizing:border-box;background:var(--surface);color:var(--ink);border:2px solid var(--accent);border-radius:16px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:10px}
+#upBox .up-row{display:flex;align-items:center;gap:10px;font-size:1.08rem}
+#upBox .up-spin{width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:upspin .8s linear infinite;flex:none}
+#upBox .up-bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+#upBox .up-bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .3s}
+#upBox .up-bar i.ind{width:40%;animation:upind 1.2s ease-in-out infinite}
+#upBox .up-sub{font-size:.85rem;opacity:.8}
+@keyframes upspin{to{transform:rotate(360deg)}}
+@keyframes upind{0%{margin-left:-40%}100%{margin-left:100%}}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.88rem;z-index:30}
 @media (max-width:440px){.grid2{grid-template-columns:1fr 1fr}.sum{padding:6px}.sum span{font-size:.68rem}}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
@@ -979,14 +988,17 @@ function openSheet(id){
     if(need.length)api("apiThumbs",need).then(m=>{Object.assign(THUMBS,m);document.querySelectorAll("img[data-thumb]").forEach(im=>{const s=THUMBS[im.dataset.thumb];if(s)im.src=s})}).catch(()=>{});};
   drawAtts();
   const saveAtts=async()=>{if(id){try{apply(await api("apiSaveTask",{id,attachments:atts}))}catch(e){toast("添付の保存に失敗しました。もう一度お試しください")}}};
-  const msg=m=>{const el=$("up-msg");if(!el)return;el.hidden=!m;el.textContent=m||""};
+  // アップロード中は画面の上に大きく出す（くるくる＋進みぐあいのバー）。画面を閉じても終わるまで出たまま
+  const msg=(m,done,total)=>{let el=$("upBox");if(!m){if(el)el.remove();return}
+    if(!el){el=document.createElement("div");el.id="upBox";el.setAttribute("role","status");el.innerHTML='<div class="up-row"><span class="up-spin"></span><b id="upTxt"></b></div><div class="up-bar"><i id="upFill"></i></div><span class="up-sub">送信しています。画面を閉じずにお待ちください</span>';document.body.appendChild(el)}
+    $("upTxt").textContent=m;const f=$("upFill");if(total>1){f.className="";f.style.width=Math.max(4,Math.round(done/total*100))+"%"}else{f.className="ind";f.style.width=""}};
   // 30枚くらいまとめて選んでも大丈夫なように：3枚ずつ同時に送る・失敗は2回まで自動でやり直す・1枚失敗しても残りは続ける
   let saveChain=Promise.resolve(),saveWant=false;
   const queueSave=()=>{if(!id||saveWant)return saveChain;saveWant=true;saveChain=saveChain.then(()=>{saveWant=false;return saveAtts()});return saveChain};
   const handle=async(files,kind)=>{
     if(!files.length)return;
     const total=files.length,res=new Array(total),failed=[];let done=0,next=0,pushed=0;
-    const show=()=>msg(total===1?`「${files[0].name}」をアップロード中…`:`アップロード中… ${done}／${total}枚（画面を閉じずにお待ちください）`);
+    const show=()=>msg(total===1?"アップロード中…":`アップロード中… ${done}／${total}枚`,done,total);
     const warn=e=>{e.preventDefault();e.returnValue=""};window.addEventListener("beforeunload",warn);
     const one=async f=>{
       const p=await prepFile(f);
