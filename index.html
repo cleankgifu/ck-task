@@ -714,9 +714,12 @@ function openNote(id){
   $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
   $("n-cancel").onclick=close;
   if($("n-ok"))$("n-ok").onclick=async function(e){var b=e.currentTarget;if(!ME){toast("上の「わたしは」で名前を選んでください");return}
-    b.disabled=true;try{apply(await api("apiConfirmNote",id));close();toast("確認しました")}catch(err){toast(errMsg(err));b.disabled=false}};
-  if($("n-arc"))$("n-arc").onclick=async function(e){var b=e.currentTarget;b.disabled=true;
-    try{apply(await api("apiArchiveNote",id,!n.archived));close();toast(n.archived?"アーカイブから戻しました":"アーカイブしました")}catch(err){toast(errMsg(err));b.disabled=false}};
+    var snap=JSON.stringify(notes),c=Object.assign({},n.confirms||{});c[ME]=Date.now();
+    notes=notes.map(function(x){return x.id===id?Object.assign({},x,{confirms:c}):x});render();close();toast("確認しました");
+    try{apply(await api("apiConfirmNote",id))}catch(err){notes=JSON.parse(snap);render();toast("確認は保存できませんでした。もう一度お試しください",9000);refresh()}};
+  var nArc=$("sheetHost").querySelector("button#n-arc");if(nArc)nArc.onclick=async function(e){var snap=JSON.stringify(notes),to=!n.archived;
+    notes=notes.map(function(x){return x.id===id?Object.assign({},x,{archived:to}):x});render();close();toast(to?"アーカイブしました":"アーカイブから戻しました");
+    try{apply(await api("apiArchiveNote",id,to))}catch(err){notes=JSON.parse(snap);render();toast("アーカイブは保存できませんでした。もう一度お試しください",9000);refresh()}};
   if($("n-del"))$("n-del").onclick=async function(e){var d=e.currentTarget;if(d.dataset.armed!=="1"){d.dataset.armed="1";d.textContent="本当に削除する";return}
     d.disabled=true;try{apply(await api("apiDeleteNote",id));close();toast("ノートを削除しました")}catch(err){toast(errMsg(err));d.disabled=false}};
   $("nform").addEventListener("submit",async function(e){e.preventDefault();var b=$("n-save");b.disabled=true;b.textContent="保存中…";
@@ -740,9 +743,17 @@ function openAddStep(pid){
   var close=function(){$("sheetHost").innerHTML=''};
   $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
   $("a-cancel").onclick=close;
-  $("aform").addEventListener("submit",async function(e){e.preventDefault();var b=$("a-save");b.disabled=true;b.textContent="追加中…";
-    try{apply(await api("apiAddStep",pid,{title:$("a-title").value.trim(),assignee:$("a-who").value,due:$("a-due").value,pos:Number($("a-pos").value)}));close();toast("工程を追加しました")}
-    catch(err){b.disabled=false;b.textContent="追加する";toast(errMsg(err))}});
+  $("aform").addEventListener("submit",async function(e){e.preventDefault();
+    var title=$("a-title").value.trim(),who=$("a-who").value,due=$("a-due").value,pos=Number($("a-pos").value);if(!title){$("a-title").focus();return}
+    // すぐ画面に出して、送信は裏で行う（失敗したら元に戻す）
+    var snapT=JSON.stringify(tasks),now=Date.now(),key="tmp"+now;
+    var cur=tasks.filter(function(t){return t.projectId===pid}).sort(function(a,b){return (a.step||0)-(b.step||0)}),ids=cur.map(function(t){return t.id});
+    var ready=cur.slice(0,pos).every(function(t){return DONE.has(t.status)});
+    tasks=tasks.map(function(t){var i=ids.indexOf(t.id);return i<0?t:Object.assign({},t,{step:i<pos?i:i+1,stepTotal:ids.length+1})});
+    OPT[key]={tmp:true,prev:null,body:{title:"【"+p.name+"】"+title,status:ready?"未着手":WAITING,assignees:who?[who]:[],property:p.property||"",category:(cur[0]||{}).category||"",priority:"",due:due,memo:"",attachments:[],report:{},projectId:pid,projectName:p.name,step:pos,stepTotal:ids.length+1,createdAt:now,updatedAt:now,updatedBy:ME||""}};
+    apply({});close();toast("保存しています…");
+    try{var s=await api("apiAddStep",pid,{title:title,assignee:who,due:due,pos:pos});delete OPT[key];apply(s);toast("工程を追加しました")}
+    catch(err){delete OPT[key];tasks=JSON.parse(snapT);render();toast("工程「"+title.slice(0,14)+"」の追加は保存できませんでした。もう一度お試しください",9000);refresh()}});
 }
 // プロジェクト全体のメモ（工程のタスクの report.pmemo に入れる。いちばん新しいものを使う）
 function pmemoOf(pid){let best=null;tasks.forEach(t=>{if(t.projectId!==pid||!t.report||typeof t.report.pmemo!=="string")return;if(!best||(t.report.pmemoAt||0)>(best.report.pmemoAt||0))best=t});return best?best.report.pmemo:""}
@@ -817,11 +828,18 @@ function renderProjects(){
 // ▼ プロジェクトのアーカイブ（最初の工程のタスクの report.parch に日時を入れる）
 function isPArch(pid){const a=anchorOf(pid);return a&&a.report&&typeof a.report.parch==="number"?a.report.parch:0}
 function fmtArch(ms){const d=new Date(ms);return `${d.getMonth()+1}/${d.getDate()}`}
-async function archiveProject(pid,un){const steps=tasks.filter(t=>t.projectId===pid);const a=anchorOf(pid);if(!a)return;let last=null;
-  if(!un){for(const t of steps){if(t===a||!DONE.has(t.status)||ARCH.has(t.status))continue;const st=arcStatus(t.status);last=await api("apiSaveTask",{id:t.id,status:st,report:withDone(t,st)})}}
+async function archiveProject(pid,un){const steps=tasks.filter(t=>t.projectId===pid);const a=anchorOf(pid);if(!a)return;let last=null;const bodies=[];
+  if(!un){for(const t of steps){if(t===a||!DONE.has(t.status)||ARCH.has(t.status))continue;const st=arcStatus(t.status);bodies.push({id:t.id,status:st,report:withDone(t,st)})}}
   const rep={...(a.report||{})};if(un)delete rep.parch;else rep.parch=Date.now();
   const body={id:a.id,report:rep};if(!un&&DONE.has(a.status)&&!ARCH.has(a.status)){body.status=arcStatus(a.status);body.report=withDone(a,body.status,rep)}
-  last=await api("apiSaveTask",body);return last}
+  bodies.push(body);
+  // すぐ画面に反映して、送信は順番に裏で行う（失敗したら元に戻す）
+  const snap=JSON.stringify(tasks),mine={};
+  bodies.forEach(b=>{const t=tasks.find(x=>x.id===b.id);const {id:_i,...rest}=b;mine[b.id]=OPT[b.id]={tmp:false,prev:JSON.parse(JSON.stringify(t)),body:rest}});
+  apply({});
+  const clear=()=>Object.keys(mine).forEach(k=>{if(OPT[k]===mine[k])delete OPT[k]});
+  try{for(const b of bodies)last=await api("apiSaveTask",b)}catch(e){clear();tasks=JSON.parse(snap);render();refresh();throw e}
+  clear();return last}
 
 // サーバー（Googleスプレッドシート）とのやりとり
 function getPin(){try{return localStorage.getItem("ckpin")||window.__pin||""}catch(_){return window.__pin||""}}
@@ -839,6 +857,14 @@ const OPT={};
 function optLay(){const ks=Object.keys(OPT);if(!ks.length)return;tasks=tasks.filter(t=>!(OPT[t.id]&&OPT[t.id].tmp));
   ks.forEach(k=>{const o=OPT[k];if(o.tmp){tasks.push({id:k,...o.body});return}const i=tasks.findIndex(t=>t.id===k);if(i>=0)tasks[i]={...tasks[i],...o.body}})}
 function apply(s){if(!s)return;tasks=s.tasks||tasks;optLay();tasks.forEach(t=>{if(t.id in PEND){t.report={...(t.report||{})};if(PEND[t.id]===null)delete t.report.ord;else t.report.ord=PEND[t.id]}});projects=s.projects||projects;notes=s.notes||notes;if(s.people)PEOPLE=s.people;loaded=true;render()}
+// タスク1件の変更を、すぐ画面に出して裏で送る（既存タスク用。2回まで自動でやり直し、だめなら元に戻す）
+async function saveQuick(t,patch,okMsg){const key=t.id,opt={tmp:false,prev:JSON.parse(JSON.stringify(t)),body:{...patch,updatedAt:Date.now(),updatedBy:ME||""}};
+  let s=null;const send=(async()=>{for(let n=0;n<3;n++){try{s=await api("apiSaveTask",{id:key,...patch});break}catch(e){if(String(e&&e.message||"").includes("NOT_MEMBER"))break;if(n<2)await new Promise(ok=>setTimeout(ok,1500*(n+1)))}}})();
+  OPT[key]=opt;apply({});await send;
+  const mine=OPT[key]===opt;if(mine)delete OPT[key];
+  if(s){apply(s);if(okMsg)toast(okMsg);return true}
+  if(mine){const i=tasks.findIndex(x=>x.id===key);if(i>=0)tasks[i]=opt.prev}
+  render();toast("「"+String(t.title).replace(/^【.*?】/,"").slice(0,14)+"」は保存できませんでした。元に戻しました。もう一度お試しください",9000);refresh();return false}
 function errMsg(err){const m=String(err&&err.message||err||"");if(m.includes("NOT_MEMBER"))return "このアカウントはメンバーに登録されていません。吉田さんに連絡してください";return "保存できませんでした。通信状況を確認してもう一度お試しください"}
 async function refresh(){try{apply(await api("apiLoad"))}catch(e){}}
 
@@ -890,7 +916,7 @@ function calUrl(t){
 }
 
 function openSheet(id){
-  if(id&&OPT[id]&&OPT[id].tmp){toast("保存中です。数秒待ってから開いてください");return}
+  if(id&&String(id).indexOf("tmp")===0){toast("保存中です。数秒待ってから開いてください");return}
   const t=id?tasks.find(x=>x.id===id):{title:"",status:"未着手",assignees:F.who?[F.who]:[],property:"",category:"",priority:"",due:"",memo:""};
   if(!t)return;
   const ro=!canWrite;
@@ -1266,11 +1292,9 @@ $("ordReset").addEventListener("click",e=>{const b=e.currentTarget;
 $("list").addEventListener("click",async e=>{
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
-  if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;ci.disabled=true;ci.classList.add("on");ci.innerHTML='<span class="box">✓</span><span>入力完了</span>';
-    try{apply(await api("apiSaveTask",{id:t.id,status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")}));toast("入力完了 → アーカイブに入れました")}catch(err){ci.disabled=false;toast(errMsg(err))}return}
+  if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;saveQuick(t,{status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")},"入力完了 → アーカイブに入れました");return}
   const a=e.target.closest("[data-arc]");
-  if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;a.disabled=true;
-    try{apply(await api("apiSaveTask",{id:t.id,status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))}));toast("アーカイブしました")}catch(err){a.disabled=false;toast(errMsg(err))}return}
+  if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;saveQuick(t,{status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))},"アーカイブしました");return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
 
 // ▼ プロジェクトの並べ替え（順番はプロジェクトの最初の工程のタスクの report.pord に入れる）
