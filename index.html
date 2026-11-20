@@ -753,12 +753,23 @@ function openRenameProject(pid){
   $("bg").addEventListener("click",function(e){if(e.target.id==="bg")close()});
   $("r-cancel").onclick=close;
   $("rform").addEventListener("submit",async function(e){e.preventDefault();var n=$("r-name").value.trim();if(!n){$("r-name").focus();return}
-    var b=$("r-save");b.disabled=true;b.textContent="変更中…";
-    try{var np=$("r-prop").value.trim(),nm=$("r-pmemo").value;
-      if(n!==p.name||np!==(p.property||""))apply(await api("apiRenameProject",pid,n,np));
-      if(nm!==memo0){var a=anchorOf(pid);if(a){var rep2=Object.assign({},a.report||{},{pmemo:nm,pmemoAt:Date.now()});apply(await api("apiSaveTask",{id:a.id,report:rep2}))}}
-      close();toast("プロジェクトを更新しました")}
-    catch(err){b.disabled=false;b.textContent="保存";toast(errMsg(err))}});
+    // 待たせない：すぐ画面に反映して閉じ、送信は裏で行う（失敗したら元に戻して知らせる）
+    var np=$("r-prop").value.trim(),nm=$("r-pmemo").value,old=p.name,op=p.property||"";
+    var ren=n!==old||np!==op,a=nm!==memo0?anchorOf(pid):null;
+    if(!ren&&!a){close();return}
+    var rep2=a?Object.assign({},a.report||{},{pmemo:nm,pmemoAt:Date.now()}):null;
+    var snapP=JSON.stringify(projects),snapT=JSON.stringify(tasks);
+    if(ren){projects=projects.map(function(x){return x.id===pid?Object.assign({},x,{name:n,property:np}):x});
+      tasks=tasks.map(function(t){if(t.projectId!==pid)return t;var c=Object.assign({},t,{projectName:n});
+        if(String(t.title).indexOf("【"+old+"】")===0)c.title="【"+n+"】"+String(t.title).slice(old.length+2);
+        if(np!==op)c.property=np;return c})}
+    if(rep2)tasks=tasks.map(function(t){return t.id===a.id?Object.assign({},t,{report:rep2}):t});
+    render();close();toast("保存しています…");
+    try{var s=null;
+      if(ren)s=await api("apiRenameProject",pid,n,np);
+      if(rep2)s=await api("apiSaveTask",{id:a.id,report:rep2});
+      apply(s);toast("プロジェクトを更新しました")}
+    catch(err){projects=JSON.parse(snapP);tasks=JSON.parse(snapT);render();toast("プロジェクトの変更は保存できませんでした。元に戻しました。もう一度お試しください",9000);refresh()}});
   $("r-name").focus();
 }
 function renderProjects(){
