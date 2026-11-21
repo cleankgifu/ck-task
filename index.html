@@ -226,6 +226,8 @@ li.task.is-reply .arc.rpl{opacity:1}
 .memo1{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* メモの吹き出し */
 .bub{position:relative;display:block;margin:8px 0 2px 6px;padding:6px 10px;border-radius:12px;background:var(--surface);border:1.5px solid var(--line);font-size:.82rem;line-height:1.45;max-width:100%}
+.bub .bt.say{font-weight:800;font-size:.9rem}
+.sheet .sayf input{border:2px solid var(--accent);border-radius:14px;font-weight:700}
 .bub .bt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;word-break:break-all}
 .bub::before{content:"";position:absolute;left:14px;top:-7px;width:11px;height:11px;background:inherit;border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg)}
 .bubw{position:relative;display:block;margin-top:2px}
@@ -236,7 +238,7 @@ li.task.is-reply .arc.rpl{opacity:1}
 .bubw.hot .bub{background:color-mix(in srgb,var(--over) 12%,var(--surface));border-color:var(--over)}
 .bubw .flag{display:table;margin-bottom:3px;background:var(--over);color:#fff;font-weight:800;font-size:.75rem;border-radius:999px;padding:1px 9px;margin-right:6px}
 li.task.is-wait .bubw,li.task.is-reply .bubw,li.task.is-done .bubw{display:none}
-li.task.is-wait .bubw.hot,li.task.is-reply .bubw.hot{display:block}
+li.task.is-wait .bubw.hot,li.task.is-reply .bubw.hot,li.task.is-wait .bubw.say,li.task.is-reply .bubw.say{display:block}
 /* 編集画面の「要」チェック */
 .flagpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
 .flagpick label{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);border-radius:999px;padding:4px 12px;font-weight:800;font-size:.85rem;cursor:pointer}
@@ -763,7 +765,7 @@ function row(t,i,n){
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
-        ${(()=>{const fl=flagOf(t),mm=String(t.memo||"").trim();if(!fl&&!mm)return "";const txt=mm.split(/\n/).map(x=>x.trim()).filter(Boolean).slice(0,3).join("\n");return `<span class="bubw ${fl?"hot":""}"><span class="bub">${fl?`<span class="flag">❗${esc(fl)}</span>`:""}${txt?`<span class="bt">${esc(txt)}</span>`:""}</span></span>`})()}
+        ${(()=>{const fl=flagOf(t),say=String((t.report&&t.report.say)||"").trim(),mm=String(t.memo||"").trim();if(!fl&&!mm&&!say)return "";const txt=say||mm.split(/\n/).map(x=>x.trim()).filter(Boolean).slice(0,3).join("\n");return `<span class="bubw ${fl?"hot":""} ${say?"say":""}"><span class="bub">${fl?`<span class="flag">❗${esc(fl)}</span>`:""}${txt?`<span class="bt ${say?"say":""}">${esc(txt)}</span>`:""}</span></span>`})()}
       </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
 }
 
@@ -1047,6 +1049,7 @@ function openSheet(id){
       <button type="button" class="btn chk ghost" data-set="確認済みアーカイブ">確認してアーカイブ</button></div>
       <span class="small">「完了」「確認した」はリーダーが見られるように一覧に残ります。アーカイブを選ぶと一覧から外れます。</span></div>`:""}
     <div class="field"><label for="e-title">タスク名</label><textarea id="e-title" class="title-in" rows="3" required ${ro?"disabled":""}>${esc(t.title)}</textarea></div>
+    <div class="field sayf"><label for="e-say">💬 吹き出しのひとこと（一覧に出ます）</label><input id="e-say" maxlength="80" placeholder="例：榊原さんと金額の打ち合わせが必要" value="${esc((t.report&&t.report.say)||"")}" ${ro?"disabled":""}></div>
     <div class="field"><span class="lab">いつ？</span><div class="people dkrow" id="e-dk">${DKS.map(k=>`<label><input type="radio" name="e-dk" value="${k}" ${k===dkOf(t)?"checked":""} ${ro?"disabled":""}>${k}</label>`).join("")}</div>
       <input id="e-due" type="date" aria-label="日付" value="${esc(t.due||"")}" ${NODATE.has(dkOf(t))?"hidden":""} ${ro?"disabled":""}></div>
     <div class="grid2">
@@ -1208,7 +1211,7 @@ function openSheet(id){
     e.preventDefault();if(ro)return;
     const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),client:$("e-client").value.trim(),
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
-      report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim(),flag:([...document.querySelectorAll('input[name="e-flag"]:checked')].pop()||{}).value||""}};
+      report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim(),flag:([...document.querySelectorAll('input[name="e-flag"]:checked')].pop()||{}).value||"",say:($("e-say")?$("e-say").value.trim():((t.report||{}).say||""))}};
     if(vIn)body.report.vendor=vIn.value.trim();
     body.report.room=$("e-room").value.trim();
     {const pu=$("l-url")&&$("l-url").value.trim();if(pu&&/^https?:\/\//i.test(pu))LINKS.push({url:pu,title:$("l-title").value.trim()});}
