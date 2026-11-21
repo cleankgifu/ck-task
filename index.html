@@ -81,6 +81,15 @@ li.task .open{all:unset;box-sizing:border-box;flex:1;min-width:0;display:grid;gr
 li.task .open:hover{background:var(--bg)}
 li.task .open:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 li.task.is-done .title{color:var(--muted)}
+/* アーカイブ待ち（完了・確認済み）＝うすい緑で暗め */
+li.task.is-done:not(.is-arch){background:color-mix(in srgb,var(--s-done-bg) 75%,var(--surface));box-shadow:inset 5px 0 0 var(--s-done)}
+li.task.is-done:not(.is-arch) .open{opacity:.7;padding-block:8px}
+li.task.is-done:not(.is-arch) .memo1{display:none}
+/* アーカイブ済み＝濃いグレーでいちばん暗く */
+li.task.is-arch{background:color-mix(in srgb,var(--muted) 28%,var(--surface))}
+li.task.is-arch .open{opacity:.5;filter:grayscale(1);padding-block:8px}
+li.task.is-arch .memo1{display:none}
+li.task.is-done .open:hover,li.task.is-done .open:focus-visible{opacity:1;filter:none}
 .arc{flex:0 0 auto;margin-right:12px;font:inherit;font-size:.78rem;font-weight:700;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
 li.sect{padding:10px 14px;background:var(--s-done-bg);color:var(--s-done);font-weight:700;font-size:.85rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
 li.sect span{font-weight:400;font-size:.75rem}
@@ -678,7 +687,7 @@ function row(t,i,n){
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     const mv=REORDER&&canWrite&&!DONE.has(t.status)&&i!==undefined;
-    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${grp(t)===1?"is-wait":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
+    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${ARCH.has(t.status)?"is-arch":""} ${grp(t)===1?"is-wait":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
       ${dueHtml}
       <span class="main">
         <span class="title ${t.priority==="High"?"hi":""}">${isNew(t)?`<span class="newtag">NEW</span>`:""}${esc(t.title)}</span>
