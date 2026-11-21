@@ -110,6 +110,24 @@ li.sect.wait.tog:focus-visible{outline:2px solid var(--accent);outline-offset:-2
 .st-next{color:var(--muted);background:transparent;border:1px dashed var(--line)}
 .st-arch{color:var(--muted);background:var(--s-todo-bg)}
 .projtag{color:var(--accent);font-weight:700}
+/* プロジェクトの流れ（全工程と次にやること） */
+.pnext{grid-column:2;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pdots{display:inline-flex;gap:3px;align-items:center}
+.pdots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+.pdots i.d{background:var(--s-done)}
+.pdots i.c{background:var(--over);box-shadow:0 0 0 2px color-mix(in srgb,var(--over) 30%,transparent)}
+.pflow{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.pflow li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-top:1px solid var(--line);font-size:.85rem;cursor:pointer}
+.pflow li:first-child{border-top:0}
+.pflow li .mk{flex:0 0 1.6rem;height:1.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;background:var(--line);color:var(--muted)}
+.pflow li.d .mk{background:var(--s-done);color:#fff}
+.pflow li.d .nm{color:var(--muted);text-decoration:line-through}
+.pflow li.c{background:var(--s-check-bg)}
+.pflow li.c .mk{background:var(--over);color:#fff}
+.pflow li.c .nm{font-weight:800}
+.pflow li .nm{display:block}
+.pflow li .sb{display:block;font-size:.72rem;color:var(--muted)}
+.pflow li.nx .sb b{color:var(--over)}
 .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
 .tabs button{flex:1;font:inherit;font-weight:700;border:0;background:transparent;color:var(--muted);border-radius:8px;padding:8px;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
@@ -526,6 +544,13 @@ const isOpen=t=>!DONE.has(t.status)&&t.status!==WAITING;
 const WAIT_ST=new Set(["前工程待ち","施工日決定待ち","施工待ち","見積送信済","保留"]);
 // 新しく入ったタスク：作られて3日以内でまだ「未着手」のもの → 一番上に出して NEW を付ける
 const isNew=t=>t.status==="未着手"&&t.createdAt&&(Date.now()-Number(t.createdAt))<3*864e5;
+// 同じプロジェクトの工程（順番どおり）
+function projSteps(t){if(!t||!t.projectId)return [];return tasks.filter(x=>x.projectId===t.projectId).sort((a,b)=>(a.step||0)-(b.step||0))}
+const stepName=x=>String(x.title||"").replace(/^【[^】]*】\s*/,"");
+function projNext(t){const st=projSteps(t);const i=st.findIndex(x=>x.id===t.id);return i>=0?st.slice(i+1).find(x=>!DONE.has(x.status)):null}
+function projFlow(t){const st=projSteps(t);if(!st.length)return "";const nx=projNext(t);
+  return `<ol class="pflow">${st.map((x,i)=>{const d=DONE.has(x.status),c=x.id===t.id;
+    return `<li class="${d?"d":""} ${c?"c":""} ${nx&&x.id===nx.id?"nx":""}" data-goto="${esc(x.id)}"><span class="mk">${d?"✓":i+1}</span><span><span class="nm">${esc(stepName(x))}${c?"　← いまここ":""}</span><span class="sb">${nx&&x.id===nx.id?"<b>次の工程</b> ・ ":""}${esc(x.status)}${(x.assignees||[]).length?" ・ 👤"+esc(x.assignees.join("・")):""}${x.due?" ・ "+fmtDue(x.due):""}</span></span></li>`}).join("")}</ol>`}
 const grp=t=>DONE.has(t.status)?2:WAIT_ST.has(t.status)?1:0;
 // 手で並べ替えた順番は report.ord に入れる（みんなで同じ順番になる）
 const ordOf=t=>{const o=t.report&&t.report.ord;return o===undefined||o===null||o===""||isNaN(Number(o))?null:Number(o)};
@@ -658,7 +683,6 @@ function row(t,i,n){
       <span class="main">
         <span class="title ${t.priority==="High"?"hi":""}">${isNew(t)?`<span class="newtag">NEW</span>`:""}${esc(t.title)}</span>
         <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>
-          ${t.projectId?`<span class="projtag">▸ ${esc(t.projectName||"プロジェクト")} ${(t.step??0)+1}/${t.stepTotal||"?"}</span>`:""}
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
           ${t.property||roomOf(t)?`<span>🏢 ${esc([t.property,roomOf(t)].filter(Boolean).join(" "))}</span>`:""}
           ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
@@ -670,7 +694,7 @@ function row(t,i,n){
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
-      </span></button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
+      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
 }
 
 var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
@@ -944,7 +968,7 @@ function openSheet(id){
   let atts=[...(t.attachments||[])];
   $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><form class="sheet" id="form" role="dialog" aria-modal="true" aria-label="タスク編集">
     <h2>${id?"タスクを編集":"新しいタスク"}</h2>
-    ${t.projectId?`<p class="projinfo">▸ プロジェクト「${esc(t.projectName||"")}」の工程 ${(t.step||0)+1}/${t.stepTotal||"?"}${t.status===WAITING?"<br>前の工程が終わると、自動で「未着手」になります。":""}</p>`:""}
+    ${t.projectId?`<div class="projinfo">▸ プロジェクト「${esc(t.projectName||"")}」の工程 ${(t.step||0)+1}/${t.stepTotal||"?"}${t.status===WAITING?"<br>前の工程が終わると、自動で「未着手」になります。":""}${projFlow(t)}<span class="small">工程をタップするとそのタスクを開きます。</span></div>`:""}
     ${!ro&&id&&!ARCH.has(t.status)?`<div class="donebar"><span class="lab">終わったら</span><div class="dgrid">
       <button type="button" class="btn done" data-set="完了">完了</button>
       <button type="button" class="btn done ghost" data-set="完了アーカイブ">完了してアーカイブ</button>
@@ -1080,6 +1104,7 @@ function openSheet(id){
   document.querySelectorAll("#form [data-set]").forEach(b=>b.onclick=()=>{$("e-status").value=b.dataset.set;$("form").requestSubmit()});
   $("bg").addEventListener("click",e=>{if(e.target.id==="bg")close()});
   $("e-cancel").onclick=close;
+  $("form").addEventListener("click",e=>{const g=e.target.closest("[data-goto]");if(!g||g.dataset.goto===t.id)return;close();setTimeout(()=>openSheet(g.dataset.goto),50)});
   document.addEventListener("keydown",function k(e){if(e.key==="Escape"){close();document.removeEventListener("keydown",k)}});
   if($("e-addp"))$("e-addp").onclick=()=>{const n=$("e-newp").value.trim();if(!n)return;const box=$("e-people");const i=box.children.length;box.insertAdjacentHTML("beforeend",`<label><input type="checkbox" id="e-p${i}" value="${esc(n)}" checked>${esc(n)}</label>`);$("e-newp").value=""};
   let reqSet=null;
