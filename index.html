@@ -594,7 +594,7 @@ const WD="日月火水木金土";
 function fmtDue(s){const d=parseD(s);if(!d)return "";const y=d.getFullYear()!==new Date().getFullYear()?d.getFullYear()+"/":"";return `${y}${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})`}
 
 function fillSelects(){
-  $("f-status").innerHTML=`<option value="open">アーカイブ以外</option>`+STATUSES.filter(s=>!ARCH.has(s)).map(s=>`<option>${s}</option>`).join("")+`<option value="arch">アーカイブ</option><option value="all">すべて</option>`;
+  $("f-status").innerHTML=`<option value="open">アーカイブ以外</option>`+STATUSES.filter(s=>!ARCH.has(s)&&s!=="返事待ち").map(s=>`<option>${s}</option>`).join("")+`<option value="reply">💬 返事待ちフォルダ</option><option value="arch">アーカイブ</option><option value="all">すべて</option>`;
   $("f-cat").innerHTML=`<option value="">カテゴリ：すべて</option>`+CATS.map(c=>`<option>${c}</option>`).join("");
   $("f-status").value=F.status;
 }
@@ -612,9 +612,10 @@ function circ(s){const c=String(s||"").trim().codePointAt(0);return c>=0x2460&&c
 function visible(){
   const q=F.q.trim().toLowerCase();
   return tasks.filter(t=>{
-    if(F.status==="open"&&ARCH.has(t.status))return false;
+    if(F.status==="open"&&(ARCH.has(t.status)||t.status===REPLY))return false;
+    if(F.status==="reply"&&t.status!==REPLY)return false;
     if(F.status==="arch"&&!ARCH.has(t.status))return false;
-    if(!["open","arch","all"].includes(F.status)&&t.status!==F.status)return false;
+    if(!["open","arch","all","reply"].includes(F.status)&&t.status!==F.status)return false;
     if(F.cat&&t.category!==F.cat)return false;
     if(F.who&&!(t.assignees||[]).includes(F.who))return false;
     if(F.quick){const dl=daysLeft(t.due);
@@ -680,6 +681,7 @@ function render(){
   if(VIEW==="projects"){renderProjects();return}
   const v=visible();
   $("count").textContent=`${v.length}件表示 ／ 全${tasks.length}件`;
+  if(!v.length&&F.status==="reply"){$("list").innerHTML=`<li class="sect wait tog reply" data-goopen role="button" tabindex="0"><span><b>💬 返事待ちフォルダは空です</b></span><span class="tg">◀ 一覧に戻る</span></li>`;return}
   if(!v.length){$("list").innerHTML=`<li class="empty"><div class="kk-empty">${kkEl("wave")}<span>${tasks.length?"条件に合うタスクはありません。":"まだタスクがありません。右下の「＋ タスク追加」から登録できます。"}</span></div></li>`;return}
   const showSplit=F.status==="open";
   const act=showSplit?v.filter(t=>!DONE.has(t.status)):v;
@@ -688,12 +690,14 @@ function render(){
   $("ordReset").hidden=!REORDER;$("ordHint").textContent=REORDER?"▲▼で順番を変えられます（みんなの画面も同じ順番になります）":"";
   const now=act.filter(t=>grp(t)===0),wt=act.filter(t=>grp(t)===1),rp=act.filter(t=>t.status===REPLY);
   const rOpen=REPLYOPEN||REORDER;
-  const rmid=showSplit&&rp.length?`<li class="sect wait tog reply" data-replytog role="button" tabindex="0" aria-expanded="${rOpen}"><span><b>💬 返事待ち（見積の回答など・流れるかも） ${rp.length}件</b><br>返事が来たらステータスを戻す。来なければ「完了してアーカイブ」で外せます</span><span class="tg">${rOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
+  const rcount=tasks.filter(t=>t.status===REPLY&&(!F.who||(t.assignees||[]).includes(F.who))).length;
+  const rmidOld=false&&rp.length?`<li class="sect wait tog reply" data-replytog role="button" tabindex="0" aria-expanded="${rOpen}"><span><b>💬 返事待ち（見積の回答など・流れるかも） ${rp.length}件</b><br>返事が来たらステータスを戻す。来なければ「完了してアーカイブ」で外せます</span><span class="tg">${rOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const head=showSplit&&now.length?`<li class="sect now">🔴 やってください ${now.length}件</li>`:"";
   const wOpen=WAITOPEN||REORDER;
   const mid=showSplit&&wt.length?`<li class="sect wait tog" data-waittog role="button" tabindex="0" aria-expanded="${wOpen}"><span><b>⏸ 待ち（回答待ち・保留・前工程など） ${wt.length}件</b><br>返事や前の作業が終わると上に上がります</span><span class="tg">${wOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const rows=list=>list.map((t,i)=>row(t,i,list.length)).join("");
-  $("list").innerHTML=(showSplit?head+rows(now)+mid+(wOpen?rows(wt):"")+rmid+(rOpen?rows(rp):""):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
+  const rhead=F.status==="reply"?`<li class="sect wait tog reply" data-goopen role="button" tabindex="0"><span><b>💬 返事待ちフォルダ ${v.length}件</b><br>返事が来たら「📩 返事きた」で一覧に戻ります</span><span class="tg">◀ 一覧に戻る</span></li>`:"";
+  $("list").innerHTML=rhead+(showSplit?head+rows(now)+mid+(wOpen?rows(wt):"")+(showSplit&&rcount?`<li class="sect wait tog reply" data-goreply role="button" tabindex="0"><span><b>💬 返事待ちフォルダ ${rcount}件</b><br>見積の回答待ちなど。一覧とは分けてしまってあります</span><span class="tg">開く ▶</span></li>`:""):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
 }
 function row(t,i,n){
     const dl=daysLeft(t.due);let cls="",tag="";const dk=dkOf(t);
@@ -1361,9 +1365,11 @@ $("ordReset").addEventListener("click",e=>{const b=e.currentTarget;
   b.dataset.armed="";b.textContent="自動の並びに戻す";
   visible().filter(t=>!DONE.has(t.status)&&ordOf(t)!==null).forEach(t=>setOrd(t,null));render();queueOrd()});
 function togWait(){WAITOPEN=!WAITOPEN;try{localStorage.setItem("ckwaitopen",WAITOPEN?"1":"0")}catch(_){}render()}
-$("list").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-waittog]")){e.preventDefault();togWait()}if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-replytog]")){e.preventDefault();e.target.closest("[data-replytog]").click()}});
+$("list").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-waittog]")){e.preventDefault();togWait()}{const k=(e.key==="Enter"||e.key===" ")&&e.target.closest("[data-replytog],[data-goreply],[data-goopen]");if(k){e.preventDefault();k.click()}}});
 $("list").addEventListener("click",async e=>{
   if(e.target.closest("[data-waittog]")){togWait();return}
+  if(e.target.closest("[data-goreply]")){F.status="reply";$("f-status").value="reply";render();window.scrollTo({top:$("list").offsetTop-80,behavior:"smooth"});return}
+  if(e.target.closest("[data-goopen]")){F.status="open";$("f-status").value="open";render();return}
   if(e.target.closest("[data-replytog]")){REPLYOPEN=!REPLYOPEN;try{localStorage.setItem("ckreplyopen",REPLYOPEN?"1":"0")}catch(_){}render();return}
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
