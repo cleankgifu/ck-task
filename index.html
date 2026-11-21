@@ -20,6 +20,7 @@
   --s-check:#b0545e; --s-check-bg:#f6d8da;
   --s-done:#5c7d4f; --s-done-bg:#dfe9d2;
   --s-hold:#7b6692; --s-hold-bg:#e9e0f0;
+  --s-reply:#2f7a7a; --s-reply-bg:#d3ecea;
   --over:#b0545e;
   --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
   --f-body:"M PLUS Rounded 1c","Noto Sans JP","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
@@ -30,14 +31,14 @@
   --accent:#e3957b; --accent-ink:#2a1812; --accent-soft:#4d3228;
   --s-todo:#c9bcae; --s-todo-bg:#40362f; --s-doing:#9cc0d8; --s-doing-bg:#2c3a44;
   --s-wait:#ecc66e; --s-wait-bg:#463a1f; --s-check:#ee9da4; --s-check-bg:#4a2b2e;
-  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --over:#ee9da4;
+  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --over:#ee9da4;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#2a221e; --surface:#352b26; --ink:#f3e8da; --muted:#bba895; --line:#4c3f37;
   --accent:#e3957b; --accent-ink:#2a1812; --accent-soft:#4d3228;
   --s-todo:#c9bcae; --s-todo-bg:#40362f; --s-doing:#9cc0d8; --s-doing-bg:#2c3a44;
   --s-wait:#ecc66e; --s-wait-bg:#463a1f; --s-check:#ee9da4; --s-check-bg:#4a2b2e;
-  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --over:#ee9da4;
+  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --over:#ee9da4;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
@@ -192,6 +193,14 @@ ol.steps li .open:focus-visible{outline:2px solid var(--accent)}
 .st-check{color:var(--s-check);background:var(--s-check-bg)}
 .st-done{color:var(--s-done);background:var(--s-done-bg)}
 .st-hold{color:var(--s-hold);background:var(--s-hold-bg)}
+.st-reply{color:var(--s-reply);background:var(--s-reply-bg)}
+/* 返事待ち（流れるかもしれない見積など）＝青緑で暗め、別の欄 */
+li.task.is-reply{background:color-mix(in srgb,var(--s-reply-bg) 70%,var(--surface));box-shadow:inset 5px 0 0 var(--s-reply)}
+li.task.is-reply .open{opacity:.68;padding-block:8px}
+li.task.is-reply .open:hover,li.task.is-reply .open:focus-visible{opacity:1}
+li.task.is-reply .memo1{display:none}
+li.sect.wait.tog.reply{background:var(--s-reply-bg);color:var(--s-reply)}
+.oldtag{color:var(--s-reply);font-weight:800}
 .memo1{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty{padding:28px 16px;text-align:center;color:var(--muted)}
 .fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:12px 20px;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer}
@@ -526,7 +535,7 @@ header .hright{flex-basis:100%}
 
 <script>window.onerror=function(m,u,l,c){var d=document.createElement("pre");d.style.cssText="color:#b00;white-space:pre-wrap;font-size:12px";d.textContent="ERR "+m+" @"+l+":"+c;document.body.insertBefore(d,document.body.firstChild)};</script>
 <script>
-const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち","施工待ち","見積送信済","未確認","保留","確認済み","完了","完了 請求書作成","確認済みアーカイブ","完了アーカイブ"];
+const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち","施工待ち","見積送信済","返事待ち","未確認","保留","確認済み","完了","完了 請求書作成","確認済みアーカイブ","完了アーカイブ"];
 const DONE=new Set(["完了","確認済み","完了 請求書作成","完了アーカイブ","確認済みアーカイブ"]);
 const ARCH=new Set(["完了アーカイブ","確認済みアーカイブ"]);
 const WAITING="前工程待ち";
@@ -546,9 +555,10 @@ try{const v=localStorage.getItem("ckview");VIEW=(v==="projects"||v==="notes")?v:
 const CATS=["管理","工事","東建工事","事務","民泊清掃","情報共有"];
 const BASE_PEOPLE=["吉田","森","宮脇","浅井","姫野","冨田","栗田","民泊","アズル","情報共有"];
 const BASE_PROPS=["パークタウンM","UR緑苑東","第二ヴィラあさの"];
-const STCLASS=s=>({"未着手":"todo","進行中":"doing","前工程待ち":"next","施工日決定待ち":"wait","施工待ち":"wait","見積送信済":"wait","未確認":"check","確認済み":"done","完了":"done","完了 請求書作成":"done","完了アーカイブ":"arch","確認済みアーカイブ":"arch","保留":"hold"}[s]||"todo");
+const STCLASS=s=>({"未着手":"todo","進行中":"doing","前工程待ち":"next","施工日決定待ち":"wait","施工待ち":"wait","見積送信済":"wait","未確認":"check","確認済み":"done","完了":"done","完了 請求書作成":"done","完了アーカイブ":"arch","確認済みアーカイブ":"arch","保留":"hold","返事待ち":"reply"}[s]||"todo");
 const arcStatus=s=>s==="確認済み"?"確認済みアーカイブ":"完了アーカイブ";
-const isOpen=t=>!DONE.has(t.status)&&t.status!==WAITING;
+const REPLY="返事待ち";
+const isOpen=t=>!DONE.has(t.status)&&t.status!==WAITING&&t.status!==REPLY;
 // 並び順：すぐ作業できる → 待ち（前工程・施工日・見積・保留）→ 完了
 const WAIT_ST=new Set(["前工程待ち","施工日決定待ち","施工待ち","見積送信済","保留"]);
 // 新しく入ったタスク：作られて3日以内でまだ「未着手」のもの → 一番上に出して NEW を付ける
@@ -560,9 +570,10 @@ function projNext(t){const st=projSteps(t);const i=st.findIndex(x=>x.id===t.id);
 function projFlow(t){const st=projSteps(t);if(!st.length)return "";const nx=projNext(t);
   return `<ol class="pflow">${st.map((x,i)=>{const d=DONE.has(x.status),c=x.id===t.id;
     return `<li class="${d?"d":""} ${c?"c":""} ${nx&&x.id===nx.id?"nx":""}" data-goto="${esc(x.id)}"><span class="mk">${d?"✓":i+1}</span><span><span class="nm">${esc(stepName(x))}${c?"　← いまここ":""}</span><span class="sb">${nx&&x.id===nx.id?"<b>次の工程</b> ・ ":""}${esc(x.status)}${(x.assignees||[]).length?" ・ 👤"+esc(x.assignees.join("・")):""}${x.due?" ・ "+fmtDue(x.due):""}</span></span></li>`}).join("")}</ol>`}
-const grp=t=>DONE.has(t.status)?2:WAIT_ST.has(t.status)?1:0;
+const grp=t=>DONE.has(t.status)?2:t.status===REPLY?1.5:WAIT_ST.has(t.status)?1:0;
 // 手で並べ替えた順番は report.ord に入れる（みんなで同じ順番になる）
 const ordOf=t=>{const o=t.report&&t.report.ord;return o===undefined||o===null||o===""||isNaN(Number(o))?null:Number(o)};
+let REPLYOPEN=false;try{REPLYOPEN=localStorage.getItem("ckreplyopen")==="1"}catch(_){}
 let WAITOPEN=false;try{WAITOPEN=localStorage.getItem("ckwaitopen")==="1"}catch(_){}
 let REORDER=false;const PEND={};let ordTimer=null,ordBusy=false;
 let PREORDER=false,PLIST=[],SHOWPARCH=false;const POVR={};let pordTimer=null,pordBusy=false;
@@ -672,12 +683,14 @@ function render(){
   const fin=showSplit?v.filter(t=>DONE.has(t.status)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)):[];
   $("ordToggle").setAttribute("aria-pressed",String(REORDER));$("ordToggle").textContent=REORDER?"✓ 並べ替え終了":"↕ 並べ替え";
   $("ordReset").hidden=!REORDER;$("ordHint").textContent=REORDER?"▲▼で順番を変えられます（みんなの画面も同じ順番になります）":"";
-  const now=act.filter(t=>grp(t)===0),wt=act.filter(t=>grp(t)===1);
+  const now=act.filter(t=>grp(t)===0),wt=act.filter(t=>grp(t)===1),rp=act.filter(t=>t.status===REPLY);
+  const rOpen=REPLYOPEN||REORDER;
+  const rmid=showSplit&&rp.length?`<li class="sect wait tog reply" data-replytog role="button" tabindex="0" aria-expanded="${rOpen}"><span><b>💬 返事待ち（見積の回答など・流れるかも） ${rp.length}件</b><br>返事が来たらステータスを戻す。来なければ「完了してアーカイブ」で外せます</span><span class="tg">${rOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const head=showSplit&&now.length?`<li class="sect now">🔴 やってください ${now.length}件</li>`:"";
   const wOpen=WAITOPEN||REORDER;
   const mid=showSplit&&wt.length?`<li class="sect wait tog" data-waittog role="button" tabindex="0" aria-expanded="${wOpen}"><span><b>⏸ 待ち（回答待ち・保留・前工程など） ${wt.length}件</b><br>返事や前の作業が終わると上に上がります</span><span class="tg">${wOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const rows=list=>list.map((t,i)=>row(t,i,list.length)).join("");
-  $("list").innerHTML=(showSplit?head+rows(now)+mid+(wOpen?rows(wt):""):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
+  $("list").innerHTML=(showSplit?head+rows(now)+mid+(wOpen?rows(wt):"")+rmid+(rOpen?rows(rp):""):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
 }
 function row(t,i,n){
     const dl=daysLeft(t.due);let cls="",tag="";const dk=dkOf(t);
@@ -687,11 +700,11 @@ function row(t,i,n){
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     const mv=REORDER&&canWrite&&!DONE.has(t.status)&&i!==undefined;
-    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${ARCH.has(t.status)?"is-arch":""} ${grp(t)===1?"is-wait":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
+    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${ARCH.has(t.status)?"is-arch":""} ${grp(t)===1?"is-wait":""} ${t.status===REPLY?"is-reply":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
       ${dueHtml}
       <span class="main">
         <span class="title ${t.priority==="High"?"hi":""}">${isNew(t)?`<span class="newtag">NEW</span>`:""}${esc(t.title)}</span>
-        <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>
+        <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>${(t.status==="見積送信済"||t.status===REPLY)&&t.updatedAt&&Date.now()-Number(t.updatedAt)>30*864e5?`<span class="oldtag">⏳ ${Math.floor((Date.now()-Number(t.updatedAt))/864e5)}日 動きなし</span>`:""}
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
           ${t.property||roomOf(t)?`<span>🏢 ${esc([t.property,roomOf(t)].filter(Boolean).join(" "))}</span>`:""}
           ${t.client?`<span>🤝 ${esc(t.client)}</span>`:""}
@@ -1344,9 +1357,10 @@ $("ordReset").addEventListener("click",e=>{const b=e.currentTarget;
   b.dataset.armed="";b.textContent="自動の並びに戻す";
   visible().filter(t=>!DONE.has(t.status)&&ordOf(t)!==null).forEach(t=>setOrd(t,null));render();queueOrd()});
 function togWait(){WAITOPEN=!WAITOPEN;try{localStorage.setItem("ckwaitopen",WAITOPEN?"1":"0")}catch(_){}render()}
-$("list").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-waittog]")){e.preventDefault();togWait()}});
+$("list").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-waittog]")){e.preventDefault();togWait()}if((e.key==="Enter"||e.key===" ")&&e.target.closest("[data-replytog]")){e.preventDefault();e.target.closest("[data-replytog]").click()}});
 $("list").addEventListener("click",async e=>{
   if(e.target.closest("[data-waittog]")){togWait();return}
+  if(e.target.closest("[data-replytog]")){REPLYOPEN=!REPLYOPEN;try{localStorage.setItem("ckreplyopen",REPLYOPEN?"1":"0")}catch(_){}render();return}
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
   if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;saveQuick(t,{status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")},"入力完了 → アーカイブに入れました");return}
