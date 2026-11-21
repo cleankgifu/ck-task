@@ -200,6 +200,9 @@ li.task.is-reply .open{opacity:.68;padding-block:8px}
 li.task.is-reply .open:hover,li.task.is-reply .open:focus-visible{opacity:1}
 li.task.is-reply .memo1{display:none}
 li.sect.wait.tog.reply{background:var(--s-reply-bg);color:var(--s-reply)}
+.sheet .btn.replybtn{width:100%;background:var(--s-reply-bg);color:var(--s-reply);border:1px solid var(--s-reply);font-weight:800;margin-bottom:10px}
+.arc.rpl{background:var(--s-reply-bg);color:var(--s-reply);border-color:var(--s-reply);line-height:1.2;text-align:center}
+li.task.is-reply .arc.rpl{opacity:1}
 .oldtag{color:var(--s-reply);font-weight:800}
 .memo1{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty{padding:28px 16px;text-align:center;color:var(--muted)}
@@ -716,7 +719,7 @@ function row(t,i,n){
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
-      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:""}</li>`;
+      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status==="見積送信済"?`<button class="arc rpl" data-rpl="${esc(t.id)}">💬<br>返事待ちへ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:""}</li>`;
 }
 
 var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
@@ -991,6 +994,7 @@ function openSheet(id){
   $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><form class="sheet" id="form" role="dialog" aria-modal="true" aria-label="タスク編集">
     <h2>${id?"タスクを編集":"新しいタスク"}</h2>
     ${t.projectId?`<div class="projinfo">▸ プロジェクト「${esc(t.projectName||"")}」の工程 ${(t.step||0)+1}/${t.stepTotal||"?"}${t.status===WAITING?"<br>前の工程が終わると、自動で「未着手」になります。":""}${projFlow(t)}<span class="small">工程をタップするとそのタスクを開きます。</span></div>`:""}
+    ${!ro&&id&&!DONE.has(t.status)?(t.status===REPLY?`<button type="button" class="btn replybtn back" data-set="進行中">📩 返事が来た → 進行中に戻す</button>`:`<button type="button" class="btn replybtn" data-set="返事待ち">💬 返事待ちコーナーに置く</button>`):""}
     ${!ro&&id&&!ARCH.has(t.status)?`<div class="donebar"><span class="lab">終わったら</span><div class="dgrid">
       <button type="button" class="btn done" data-set="完了">完了</button>
       <button type="button" class="btn done ghost" data-set="完了アーカイブ">完了してアーカイブ</button>
@@ -1364,6 +1368,10 @@ $("list").addEventListener("click",async e=>{
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
   if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;saveQuick(t,{status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")},"入力完了 → アーカイブに入れました");return}
+  const rq=e.target.closest("[data-rpl]");
+  if(rq){const t=tasks.find(x=>x.id===rq.dataset.rpl);if(!t)return;saveQuick(t,{status:REPLY},"返事待ちコーナーに置きました");return}
+  const rb=e.target.closest("[data-rback]");
+  if(rb){const t=tasks.find(x=>x.id===rb.dataset.rback);if(!t)return;saveQuick(t,{status:"進行中"},"進行中に戻しました");return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;saveQuick(t,{status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))},"アーカイブしました");return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
