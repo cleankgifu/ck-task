@@ -21,6 +21,7 @@
   --s-done:#5c7d4f; --s-done-bg:#dfe9d2;
   --s-hold:#7b6692; --s-hold-bg:#e9e0f0;
   --s-reply:#2f7a7a; --s-reply-bg:#d3ecea;
+  --s-deliv:#b05a14; --s-deliv-bg:#fbe0c8;
   --over:#b0545e;
   --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
   --f-body:"M PLUS Rounded 1c","Noto Sans JP","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
@@ -31,14 +32,14 @@
   --accent:#e3957b; --accent-ink:#2a1812; --accent-soft:#4d3228;
   --s-todo:#c9bcae; --s-todo-bg:#40362f; --s-doing:#9cc0d8; --s-doing-bg:#2c3a44;
   --s-wait:#ecc66e; --s-wait-bg:#463a1f; --s-check:#ee9da4; --s-check-bg:#4a2b2e;
-  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --over:#ee9da4;
+  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --s-deliv:#f3b27a; --s-deliv-bg:#4a3020; --over:#ee9da4;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#2a221e; --surface:#352b26; --ink:#f3e8da; --muted:#bba895; --line:#4c3f37;
   --accent:#e3957b; --accent-ink:#2a1812; --accent-soft:#4d3228;
   --s-todo:#c9bcae; --s-todo-bg:#40362f; --s-doing:#9cc0d8; --s-doing-bg:#2c3a44;
   --s-wait:#ecc66e; --s-wait-bg:#463a1f; --s-check:#ee9da4; --s-check-bg:#4a2b2e;
-  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --over:#ee9da4;
+  --s-done:#a9cb98; --s-done-bg:#2f3f29; --s-hold:#c8b4e0; --s-hold-bg:#3a3146; --s-reply:#8fd3cf; --s-reply-bg:#21403f; --s-deliv:#f3b27a; --s-deliv-bg:#4a3020; --over:#ee9da4;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
@@ -194,6 +195,24 @@ ol.steps li .open:focus-visible{outline:2px solid var(--accent)}
 .st-done{color:var(--s-done);background:var(--s-done-bg)}
 .st-hold{color:var(--s-hold);background:var(--s-hold-bg)}
 .st-reply{color:var(--s-reply);background:var(--s-reply-bg)}
+.st-deliv{color:var(--s-deliv);background:var(--s-deliv-bg);border:1px solid var(--s-deliv)}
+/* 納品待ち＝オレンジ。待ちの欄でもグレーにせず目立たせる */
+li.task.is-wait.is-deliv{background:color-mix(in srgb,var(--s-deliv-bg) 60%,var(--surface));box-shadow:inset 5px 0 0 var(--s-deliv)}
+li.task.is-wait.is-deliv .open{filter:none;opacity:.85}
+/* ⏸ 待ちに置くボタンと選択肢 */
+.arc.park{line-height:1.2;text-align:center;color:var(--muted)}
+li.pickrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 14px 12px;background:var(--bg);border-top:1px dashed var(--line);font-size:.8rem;color:var(--muted)}
+li.pickrow button{font:inherit;font-weight:800;font-size:.85rem;border-radius:999px;padding:6px 12px;cursor:pointer;border:1px solid currentColor}
+li.pickrow .p-reply{background:var(--s-reply-bg);color:var(--s-reply)}
+li.pickrow .p-deliv{background:var(--s-deliv-bg);color:var(--s-deliv)}
+li.pickrow .p-hold{background:var(--s-hold-bg);color:var(--s-hold)}
+li.pickrow .p-wait{background:var(--s-wait-bg);color:var(--s-wait)}
+li.pickrow .p-x{background:transparent;color:var(--muted);border-color:var(--line)}
+.sheet .parkbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.sheet .parkbar .btn{font-weight:800}
+.sheet .parkbar .b-reply{background:var(--s-reply-bg);color:var(--s-reply);border:1px solid var(--s-reply)}
+.sheet .parkbar .b-deliv{background:var(--s-deliv-bg);color:var(--s-deliv);border:1px solid var(--s-deliv)}
+.sheet .parkbar .b-back{grid-column:1/-1;background:var(--s-doing-bg);color:var(--s-doing);border:1px solid var(--s-doing)}
 /* 返事待ち（流れるかもしれない見積など）＝青緑で暗め、別の欄 */
 li.task.is-reply{background:color-mix(in srgb,var(--s-reply-bg) 70%,var(--surface));box-shadow:inset 5px 0 0 var(--s-reply)}
 li.task.is-reply .open{opacity:.68;padding-block:8px}
@@ -538,7 +557,7 @@ header .hright{flex-basis:100%}
 
 <script>window.onerror=function(m,u,l,c){var d=document.createElement("pre");d.style.cssText="color:#b00;white-space:pre-wrap;font-size:12px";d.textContent="ERR "+m+" @"+l+":"+c;document.body.insertBefore(d,document.body.firstChild)};</script>
 <script>
-const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち","施工待ち","見積送信済","返事待ち","未確認","保留","確認済み","完了","完了 請求書作成","確認済みアーカイブ","完了アーカイブ"];
+const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち","施工待ち","見積送信済","返事待ち","納品待ち","未確認","保留","確認済み","完了","完了 請求書作成","確認済みアーカイブ","完了アーカイブ"];
 const DONE=new Set(["完了","確認済み","完了 請求書作成","完了アーカイブ","確認済みアーカイブ"]);
 const ARCH=new Set(["完了アーカイブ","確認済みアーカイブ"]);
 const WAITING="前工程待ち";
@@ -558,12 +577,13 @@ try{const v=localStorage.getItem("ckview");VIEW=(v==="projects"||v==="notes")?v:
 const CATS=["管理","工事","東建工事","事務","民泊清掃","情報共有"];
 const BASE_PEOPLE=["吉田","森","宮脇","浅井","姫野","冨田","栗田","民泊","アズル","情報共有"];
 const BASE_PROPS=["パークタウンM","UR緑苑東","第二ヴィラあさの"];
-const STCLASS=s=>({"未着手":"todo","進行中":"doing","前工程待ち":"next","施工日決定待ち":"wait","施工待ち":"wait","見積送信済":"wait","未確認":"check","確認済み":"done","完了":"done","完了 請求書作成":"done","完了アーカイブ":"arch","確認済みアーカイブ":"arch","保留":"hold","返事待ち":"reply"}[s]||"todo");
+const STCLASS=s=>({"未着手":"todo","進行中":"doing","前工程待ち":"next","施工日決定待ち":"wait","施工待ち":"wait","見積送信済":"wait","未確認":"check","確認済み":"done","完了":"done","完了 請求書作成":"done","完了アーカイブ":"arch","確認済みアーカイブ":"arch","保留":"hold","返事待ち":"reply","納品待ち":"deliv"}[s]||"todo");
 const arcStatus=s=>s==="確認済み"?"確認済みアーカイブ":"完了アーカイブ";
 const REPLY="返事待ち";
 const isOpen=t=>!DONE.has(t.status)&&t.status!==WAITING&&t.status!==REPLY;
 // 並び順：すぐ作業できる → 待ち（前工程・施工日・見積・保留）→ 完了
-const WAIT_ST=new Set(["前工程待ち","施工日決定待ち","施工待ち","見積送信済","保留"]);
+const WAIT_ST=new Set(["前工程待ち","施工日決定待ち","施工待ち","見積送信済","保留","納品待ち"]);
+let PICK="";
 // 新しく入ったタスク：作られて3日以内でまだ「未着手」のもの → 一番上に出して NEW を付ける
 const isNew=t=>t.status==="未着手"&&t.createdAt&&(Date.now()-Number(t.createdAt))<3*864e5;
 // 同じプロジェクトの工程（順番どおり）
@@ -694,7 +714,7 @@ function render(){
   const rmidOld=false&&rp.length?`<li class="sect wait tog reply" data-replytog role="button" tabindex="0" aria-expanded="${rOpen}"><span><b>💬 返事待ち（見積の回答など・流れるかも） ${rp.length}件</b><br>返事が来たらステータスを戻す。来なければ「完了してアーカイブ」で外せます</span><span class="tg">${rOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const head=showSplit&&now.length?`<li class="sect now">🔴 やってください ${now.length}件</li>`:"";
   const wOpen=WAITOPEN||REORDER;
-  const mid=showSplit&&wt.length?`<li class="sect wait tog" data-waittog role="button" tabindex="0" aria-expanded="${wOpen}"><span><b>⏸ 待ち（回答待ち・保留・前工程など） ${wt.length}件</b><br>返事や前の作業が終わると上に上がります</span><span class="tg">${wOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
+  const mid=showSplit&&wt.length?`<li class="sect wait tog" data-waittog role="button" tabindex="0" aria-expanded="${wOpen}"><span><b>⏸ 待ち（納品・施工・保留・前工程など） ${wt.length}件</b><br>返事や前の作業が終わると上に上がります</span><span class="tg">${wOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const rows=list=>list.map((t,i)=>row(t,i,list.length)).join("");
   const rhead=F.status==="reply"?`<li class="sect wait tog reply" data-goopen role="button" tabindex="0"><span><b>💬 返事待ちフォルダ ${v.length}件</b><br>返事が来たら「📩 返事きた」で一覧に戻ります</span><span class="tg">◀ 一覧に戻る</span></li>`:"";
   $("list").innerHTML=rhead+(showSplit?head+rows(now)+mid+(wOpen?rows(wt):"")+(showSplit&&rcount?`<li class="sect wait tog reply" data-goreply role="button" tabindex="0"><span><b>💬 返事待ちフォルダ ${rcount}件</b><br>見積の回答待ちなど。一覧とは分けてしまってあります</span><span class="tg">開く ▶</span></li>`:""):rows(act))+(fin.length?`<li class="sect">完了・確認済み（アーカイブ前） ${fin.length}件<span>確認したら「アーカイブ」で一覧から外せます</span></li>`+fin.map(row).join(""):"");
@@ -707,7 +727,7 @@ function row(t,i,n){
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     const mv=REORDER&&canWrite&&!DONE.has(t.status)&&i!==undefined;
-    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${ARCH.has(t.status)?"is-arch":""} ${grp(t)===1?"is-wait":""} ${t.status===REPLY?"is-reply":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
+    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${ARCH.has(t.status)?"is-arch":""} ${grp(t)===1?"is-wait":""} ${t.status===REPLY?"is-reply":""} ${t.status==="納品待ち"?"is-deliv":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
       ${dueHtml}
       <span class="main">
         <span class="title ${t.priority==="High"?"hi":""}">${isNew(t)?`<span class="newtag">NEW</span>`:""}${esc(t.title)}</span>
@@ -723,7 +743,7 @@ function row(t,i,n){
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
-      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status==="見積送信済"?`<button class="arc rpl" data-rpl="${esc(t.id)}">💬<br>返事待ちへ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:""}</li>`;
+      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
 }
 
 var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
@@ -998,7 +1018,7 @@ function openSheet(id){
   $("sheetHost").innerHTML=`<div class="sheet-bg" id="bg"><form class="sheet" id="form" role="dialog" aria-modal="true" aria-label="タスク編集">
     <h2>${id?"タスクを編集":"新しいタスク"}</h2>
     ${t.projectId?`<div class="projinfo">▸ プロジェクト「${esc(t.projectName||"")}」の工程 ${(t.step||0)+1}/${t.stepTotal||"?"}${t.status===WAITING?"<br>前の工程が終わると、自動で「未着手」になります。":""}${projFlow(t)}<span class="small">工程をタップするとそのタスクを開きます。</span></div>`:""}
-    ${!ro&&id&&!DONE.has(t.status)?(t.status===REPLY?`<button type="button" class="btn replybtn back" data-set="進行中">📩 返事が来た → 進行中に戻す</button>`:`<button type="button" class="btn replybtn" data-set="返事待ち">💬 返事待ちコーナーに置く</button>`):""}
+    ${!ro&&id&&!DONE.has(t.status)?`<div class="parkbar">${t.status===REPLY||t.status==="納品待ち"?`<button type="button" class="btn b-back" data-set="進行中">${t.status===REPLY?"📩 返事が来た":"📦 届いた"} → 進行中に戻す</button>`:`<button type="button" class="btn b-reply" data-set="返事待ち">💬 返事待ちにする</button><button type="button" class="btn b-deliv" data-set="納品待ち">📦 納品待ちにする</button>`}</div>`:""}
     ${!ro&&id&&!ARCH.has(t.status)?`<div class="donebar"><span class="lab">終わったら</span><div class="dgrid">
       <button type="button" class="btn done" data-set="完了">完了</button>
       <button type="button" class="btn done ghost" data-set="完了アーカイブ">完了してアーカイブ</button>
@@ -1374,10 +1394,14 @@ $("list").addEventListener("click",async e=>{
   const m=e.target.closest("[data-mv]");if(m){moveTask(m.dataset.mid,m.dataset.mv);return}
   const ci=e.target.closest("[data-cin]");
   if(ci){const t=tasks.find(x=>x.id===ci.dataset.cin);if(!t)return;saveQuick(t,{status:"完了アーカイブ",report:withDone(t,"完了アーカイブ")},"入力完了 → アーカイブに入れました");return}
+  const pk=e.target.closest("[data-park]");if(pk){PICK=PICK===pk.dataset.park?"":pk.dataset.park;render();return}
+  const ps=e.target.closest("[data-pset]");
+  if(ps){const st=ps.dataset.pset,t=tasks.find(x=>x.id===ps.dataset.pid);PICK="";if(!st||!t){render();return}
+    saveQuick(t,{status:st},st===REPLY?"💬 返事待ちフォルダに入れました":`「${st}」にしました`);return}
   const rq=e.target.closest("[data-rpl]");
   if(rq){const t=tasks.find(x=>x.id===rq.dataset.rpl);if(!t)return;saveQuick(t,{status:REPLY},"返事待ちコーナーに置きました");return}
   const rb=e.target.closest("[data-rback]");
-  if(rb){const t=tasks.find(x=>x.id===rb.dataset.rback);if(!t)return;saveQuick(t,{status:"進行中"},"進行中に戻しました");return}
+  if(rb){const t=tasks.find(x=>x.id===rb.dataset.rback);if(!t)return;saveQuick(t,{status:"進行中"},t.status==="納品待ち"?"届いた → 進行中に戻しました":"進行中に戻しました");return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;saveQuick(t,{status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))},"アーカイブしました");return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
