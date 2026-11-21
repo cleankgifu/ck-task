@@ -224,6 +224,24 @@ li.sect.wait.tog.reply{background:var(--s-reply-bg);color:var(--s-reply)}
 li.task.is-reply .arc.rpl{opacity:1}
 .oldtag{color:var(--s-reply);font-weight:800}
 .memo1{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* メモの吹き出し */
+.bub{position:relative;display:block;margin:8px 0 2px 6px;padding:6px 10px;border-radius:12px;background:var(--surface);border:1.5px solid var(--line);font-size:.82rem;line-height:1.45;max-width:100%}
+.bub .bt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;word-break:break-all}
+.bub::before{content:"";position:absolute;left:14px;top:-7px;width:11px;height:11px;background:inherit;border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg)}
+.bubw{position:relative;display:block;margin-top:2px}
+.bubw::after{content:"";position:absolute;left:20px;top:2px;width:11px;height:11px;background:var(--surface);border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg)}
+.bubw .bub{margin-top:8px}
+.bubw .bub::before{display:none}
+.bubw.hot::after{background:color-mix(in srgb,var(--over) 12%,var(--surface));border-color:var(--over)}
+.bubw.hot .bub{background:color-mix(in srgb,var(--over) 12%,var(--surface));border-color:var(--over)}
+.bubw .flag{display:table;margin-bottom:3px;background:var(--over);color:#fff;font-weight:800;font-size:.75rem;border-radius:999px;padding:1px 9px;margin-right:6px}
+li.task.is-wait .bubw,li.task.is-reply .bubw,li.task.is-done .bubw{display:none}
+li.task.is-wait .bubw.hot,li.task.is-reply .bubw.hot{display:block}
+/* 編集画面の「要」チェック */
+.flagpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.flagpick label{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);border-radius:999px;padding:4px 12px;font-weight:800;font-size:.85rem;cursor:pointer}
+.flagpick input{accent-color:var(--over)}
+.flagpick label:has(input:checked){border-color:var(--over);background:color-mix(in srgb,var(--over) 12%,var(--surface));color:var(--over)}
 .empty{padding:28px 16px;text-align:center;color:var(--muted)}
 .fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));font:inherit;font-weight:700;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:12px 20px;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer}
 .fab:disabled{opacity:.4;cursor:default}
@@ -593,6 +611,9 @@ function projNext(t){const st=projSteps(t);const i=st.findIndex(x=>x.id===t.id);
 function projFlow(t){const st=projSteps(t);if(!st.length)return "";const nx=projNext(t);
   return `<ol class="pflow">${st.map((x,i)=>{const d=DONE.has(x.status),c=x.id===t.id;
     return `<li class="${d?"d":""} ${c?"c":""} ${nx&&x.id===nx.id?"nx":""}" data-goto="${esc(x.id)}"><span class="mk">${d?"✓":i+1}</span><span><span class="nm">${esc(stepName(x))}${c?"　← いまここ":""}</span><span class="sb">${nx&&x.id===nx.id?"<b>次の工程</b> ・ ":""}${esc(x.status)}${(x.assignees||[]).length?" ・ 👤"+esc(x.assignees.join("・")):""}${x.due?" ・ "+fmtDue(x.due):""}</span></span></li>`}).join("")}</ol>`}
+// 「要打ち合わせ」などの印（report.flag、なければメモの言葉から）
+const FLAGS=["要打ち合わせ","要対応","要確認"];
+const flagOf=t=>{const f=t.report&&t.report.flag;if(f)return f;const m=String(t.memo||"").match(/要打ち?合わ?せ|要対応|要確認/);return m?(m[0].startsWith("要打")?"要打ち合わせ":m[0]):""};
 const grp=t=>DONE.has(t.status)?2:t.status===REPLY?1.5:WAIT_ST.has(t.status)?1:0;
 // 手で並べ替えた順番は report.ord に入れる（みんなで同じ順番になる）
 const ordOf=t=>{const o=t.report&&t.report.ord;return o===undefined||o===null||o===""||isNaN(Number(o))?null:Number(o)};
@@ -742,7 +763,7 @@ function row(t,i,n){
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
-        ${memo?`<span class="memo1">${esc(memo)}</span>`:""}
+        ${(()=>{const fl=flagOf(t),mm=String(t.memo||"").trim();if(!fl&&!mm)return "";const txt=mm.split(/\n/).map(x=>x.trim()).filter(Boolean).slice(0,3).join("\n");return `<span class="bubw ${fl?"hot":""}"><span class="bub">${fl?`<span class="flag">❗${esc(fl)}</span>`:""}${txt?`<span class="bt">${esc(txt)}</span>`:""}</span></span>`})()}
       </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
 }
 
@@ -1042,7 +1063,9 @@ function openSheet(id){
       ${ro||!vendors().length?"":`<div class="vchips">${vendors().slice(0,12).map(v=>`<button type="button" class="chip" data-vendor="${esc(v)}">${esc(v)}</button>`).join("")}</div><span class="small">一度入れた業者はここに出ます。押すと入ります。</span>`}</div>`:""}
     <div class="field"><span class="lab">担当</span><div class="people" id="e-people">${people().map((p,i)=>`<label><input type="checkbox" id="e-p${i}" value="${esc(p)}" ${(t.assignees||[]).includes(p)?"checked":""} ${ro?"disabled":""}>${esc(p)}</label>`).join("")}</div>
       ${ro?"":`<div class="row"><input id="e-newp" placeholder="担当者を追加（名前）" style="flex:1"><button type="button" class="btn" id="e-addp">追加</button></div>`}</div>
-    <div class="field"><label for="e-memo">メモ</label><textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea>
+    <div class="field"><label for="e-memo">メモ（一覧に吹き出しで出ます）</label>
+      <div class="flagpick">${FLAGS.map(f=>`<label><input type="checkbox" name="e-flag" value="${f}" ${(t.report&&t.report.flag)===f?"checked":""} ${ro?"disabled":""}>❗${f}</label>`).join("")}</div>
+      <textarea id="e-memo" ${ro?"disabled":""}>${esc(t.memo||"")}</textarea>
       <div class="lnks" id="memo-links"></div></div>
     <div class="field linkbox"><span class="lab">資料（写真・PDF・動画・リンク）</span><div class="atts" id="att-file"></div>
       <div class="lnks" id="e-links"></div>
@@ -1094,6 +1117,7 @@ function openSheet(id){
   const drawMemoLinks=()=>{const b=$("memo-links");if(!b)return;const us=[...new Set(($("e-memo").value.match(/https?:\/\/[^\s　、。）)」]+/g)||[]))];b.innerHTML=us.map(u=>lnkHtml({url:u},0,false)).join("")};
   setTimeout(()=>{drawLinks();drawMemoLinks();
     $("e-memo")&&$("e-memo").addEventListener("input",drawMemoLinks);
+    document.querySelectorAll('input[name="e-flag"]').forEach(c=>c.addEventListener("change",()=>{if(c.checked)document.querySelectorAll('input[name="e-flag"]').forEach(o=>{if(o!==c)o.checked=false})}));
     $("e-links")&&$("e-links").addEventListener("click",e=>{const b=e.target.closest("[data-lrm]");if(!b)return;LINKS.splice(Number(b.dataset.lrm),1);drawLinks()});
     $("l-open")&&$("l-open").addEventListener("click",()=>{$("l-box").hidden=false;$("l-url").focus()});
     $("l-add")&&$("l-add").addEventListener("click",()=>{let u=$("l-url").value.trim();if(!u){$("l-url").focus();return}
@@ -1184,7 +1208,7 @@ function openSheet(id){
     e.preventDefault();if(ro)return;
     const body={title:$("e-title").value.trim(),status:$("e-status").value,due:$("e-due").value||"",category:$("e-cat").value,priority:$("e-pri").value,property:$("e-prop").value.trim(),client:$("e-client").value.trim(),
       assignees:[...document.querySelectorAll("#e-people input:checked")].map(x=>x.value),memo:$("e-memo").value,attachments:atts,
-      report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim()}};
+      report:{...(t.report||{}),staff:$("r-staff").value.trim(),work:$("r-work").value.trim(),notes:$("r-notes").value.trim(),remarks:$("r-remarks").value.trim(),flag:([...document.querySelectorAll('input[name="e-flag"]:checked')].pop()||{}).value||""}};
     if(vIn)body.report.vendor=vIn.value.trim();
     body.report.room=$("e-room").value.trim();
     {const pu=$("l-url")&&$("l-url").value.trim();if(pu&&/^https?:\/\//i.test(pu))LINKS.push({url:pu,title:$("l-title").value.trim()});}
