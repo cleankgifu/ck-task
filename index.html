@@ -94,6 +94,12 @@ li.task.is-wait .open:hover,li.task.is-wait .open:focus-visible{opacity:1;filter
 li.task.is-wait .memo1{display:none}
 li.task.is-wait .title{font-weight:500}
 li.sect.wait.tog{cursor:pointer;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--line) 70%,var(--surface));color:var(--muted)}
+/* やってください（すぐ作業できる）は赤で目立たせる */
+li.sect.now{background:var(--s-check-bg);color:var(--over);font-size:.95rem}
+li.task.is-now{box-shadow:inset 5px 0 0 var(--over)}
+li.task.is-now.is-late{background:color-mix(in srgb,var(--s-check-bg) 70%,var(--surface))}
+li.task.is-now .title{font-weight:800}
+.newtag{display:inline-block;background:var(--over);color:#fff;font-size:.7rem;font-weight:800;border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:2px;letter-spacing:.05em}
 li.sect.wait.tog .tg{font-weight:700;font-size:.78rem;border:1px solid currentColor;border-radius:999px;padding:2px 10px;white-space:nowrap}
 li.sect.wait.tog:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .ordbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -518,6 +524,8 @@ const arcStatus=s=>s==="確認済み"?"確認済みアーカイブ":"完了ア�
 const isOpen=t=>!DONE.has(t.status)&&t.status!==WAITING;
 // 並び順：すぐ作業できる → 待ち（前工程・施工日・見積・保留）→ 完了
 const WAIT_ST=new Set(["前工程待ち","施工日決定待ち","施工待ち","見積送信済","保留"]);
+// 新しく入ったタスク：作られて3日以内でまだ「未着手」のもの → 一番上に出して NEW を付ける
+const isNew=t=>t.status==="未着手"&&t.createdAt&&(Date.now()-Number(t.createdAt))<3*864e5;
 const grp=t=>DONE.has(t.status)?2:WAIT_ST.has(t.status)?1:0;
 // 手で並べ替えた順番は report.ord に入れる（みんなで同じ順番になる）
 const ordOf=t=>{const o=t.report&&t.report.ord;return o===undefined||o===null||o===""||isNaN(Number(o))?null:Number(o)};
@@ -570,6 +578,7 @@ function visible(){
     return true;
   }).sort((a,b)=>{
     const ga=grp(a),gb=grp(b);if(ga!==gb)return ga-gb;
+    const na0=isNew(a),nb0=isNew(b);if(na0!==nb0)return na0?-1:1;if(na0&&nb0)return Number(b.createdAt)-Number(a.createdAt);
     const oa=ordOf(a),ob=ordOf(b);
     if(oa!==null&&ob!==null&&oa!==ob)return oa-ob;
     if((oa===null)!==(ob===null))return oa===null?-1:1; // 並べ替えていない新しいタスクは上に出す
@@ -630,7 +639,7 @@ function render(){
   $("ordToggle").setAttribute("aria-pressed",String(REORDER));$("ordToggle").textContent=REORDER?"✓ 並べ替え終了":"↕ 並べ替え";
   $("ordReset").hidden=!REORDER;$("ordHint").textContent=REORDER?"▲▼で順番を変えられます（みんなの画面も同じ順番になります）":"";
   const now=act.filter(t=>grp(t)===0),wt=act.filter(t=>grp(t)===1);
-  const head=showSplit&&wt.length?`<li class="sect now">すぐ作業できる ${now.length}件</li>`:"";
+  const head=showSplit&&now.length?`<li class="sect now">🔴 やってください ${now.length}件</li>`:"";
   const wOpen=WAITOPEN||REORDER;
   const mid=showSplit&&wt.length?`<li class="sect wait tog" data-waittog role="button" tabindex="0" aria-expanded="${wOpen}"><span><b>⏸ 待ち（回答待ち・保留・前工程など） ${wt.length}件</b><br>返事や前の作業が終わると上に上がります</span><span class="tg">${wOpen?"▲ たたむ":"▼ 見る"}</span></li>`:"";
   const rows=list=>list.map((t,i)=>row(t,i,list.length)).join("");
@@ -644,10 +653,10 @@ function row(t,i,n){
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
     const mv=REORDER&&canWrite&&!DONE.has(t.status)&&i!==undefined;
-    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${grp(t)===1?"is-wait":""}"><button class="open" data-id="${esc(t.id)}">
+    return `<li class="task ${DONE.has(t.status)?"is-done":""} ${grp(t)===1?"is-wait":""} ${grp(t)===0?"is-now":""} ${grp(t)===0&&dl!==null&&dl<=0?"is-late":""}"><button class="open" data-id="${esc(t.id)}">
       ${dueHtml}
       <span class="main">
-        <span class="title ${t.priority==="High"?"hi":""}">${esc(t.title)}</span>
+        <span class="title ${t.priority==="High"?"hi":""}">${isNew(t)?`<span class="newtag">NEW</span>`:""}${esc(t.title)}</span>
         <span class="meta"><span class="pill st-${STCLASS(t.status)}">${esc(t.status)}</span>
           ${t.projectId?`<span class="projtag">▸ ${esc(t.projectName||"プロジェクト")} ${(t.step??0)+1}/${t.stepTotal||"?"}</span>`:""}
           ${(t.assignees||[]).length?`<span>👤 ${esc(t.assignees.join("・"))}</span>`:""}
