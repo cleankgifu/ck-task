@@ -201,6 +201,26 @@ li.task.is-wait.is-deliv{background:color-mix(in srgb,var(--s-deliv-bg) 60%,var(
 li.task.is-wait.is-deliv .open{filter:none;opacity:.85}
 /* ⏸ 待ちに置くボタンと選択肢 */
 .arc.park{line-height:1.2;text-align:center;color:var(--muted)}
+.hito{margin:0 0 12px;display:flex;flex-direction:column;gap:8px}
+.hcard{position:relative;background:#fffbe6;border:2px solid #e6b800;border-radius:16px;padding:10px 12px 10px 52px;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+:root[data-theme="dark"] .hcard{background:#3a3418}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hcard{background:#3a3418}}
+.hcard::before{content:"📣";position:absolute;left:12px;top:10px;font-size:1.6rem}
+.hcard .hto{font-size:.75rem;font-weight:800;color:var(--muted)}
+.hcard .htx{display:block;font-weight:800;font-size:1.05rem;line-height:1.5;white-space:pre-line;margin:2px 0 4px}
+.hcard .hbtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.75rem;color:var(--muted)}
+.hcard .hbtns button{font:inherit;font-weight:800;font-size:.85rem;border-radius:999px;padding:5px 12px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:inherit}
+.hcard .hbtns .hok{background:#e6b800;border-color:#e6b800;color:#3a2e00}
+.hcard.seen{opacity:.6;border-style:dashed}
+.hcard.seen .htx{font-size:.95rem}
+.hbar{display:flex;gap:8px;flex-wrap:wrap}
+.hbar button{font:inherit;font-weight:800;font-size:.85rem;border-radius:999px;padding:6px 14px;cursor:pointer;border:1.5px dashed #c9a000;background:transparent;color:#8a6d00}
+.hform{background:var(--surface);border:2px solid #e6b800;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.hform .hwho{display:flex;gap:6px;flex-wrap:wrap}
+.hform .hwho label{border:1.5px solid var(--line);border-radius:999px;padding:4px 12px;font-weight:700;font-size:.85rem;cursor:pointer}
+.hform .hwho label:has(input:checked){border-color:#e6b800;background:#fff1b8;color:#3a2e00}
+.hform textarea{min-height:70px}
+.hform .row{display:flex;gap:8px;justify-content:flex-end}
 li.pickrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 14px 12px;background:var(--bg);border-top:1px dashed var(--line);font-size:.8rem;color:var(--muted)}
 li.pickrow button{font:inherit;font-weight:800;font-size:.85rem;border-radius:999px;padding:6px 12px;cursor:pointer;border:1px solid currentColor}
 li.pickrow .p-reply{background:var(--s-reply-bg);color:var(--s-reply)}
@@ -522,6 +542,7 @@ header .hright{flex-basis:100%}
     <span class="hright"><label class="skinpick" for="skin">🎨<select id="skin" aria-label="色のテーマ"></select></label><span class="count" id="count"></span></span>
   </header>
   <div class="notice" id="notice" hidden></div>
+  <div id="hito" aria-label="今日のひとこと"></div>
 
   <section class="mine" aria-label="わたしの残り">
     <div class="mine-head"><label for="me">わたしは</label><select id="me"></select></div>
@@ -695,7 +716,7 @@ function kkSay(over,left,week){
   if(kkTap){el.textContent=KK_CHEER[kkTap%KK_CHEER.length];return}
   el.textContent=over>0?`期限切れが${over}件あるよ！`:left===0?"ぜんぶ終わり！おつかれさま":week>0?`7日以内が${week}件あるよ`:"今日もがんばろう！";
 }
-function render(){
+function render(){try{renderHito()}catch(_){}
   // summary（選んでいる人の分だけ数える）
   const ps=people();
   const scope=tasks.filter(t=>!F.who||(t.assignees||[]).includes(F.who));
@@ -773,8 +794,39 @@ var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
 var NF={dept:"",arc:"open"};
 function fmtTime(ms){if(!ms)return "";var d=new Date(Number(ms));return [d.getFullYear(),d.getMonth()+1,d.getDate()].join(".")+" "+String(d.getHours())+":"+("0"+d.getMinutes()).slice(-2)}
 function notePeople(){return people().filter(function(p){return p!=="情報共有"&&p!=="民泊"})}
+const isHito=n=>n&&n.dept==="ひとこと";
+let HITOFORM=false,HITOALL=false;
+function renderHito(){const box=$("hito");if(!box)return;if(HITOFORM&&$("h-text")&&box.contains($("h-text")))return;if(!loaded){box.innerHTML="";return}
+  const me=ME;const list=notes.filter(n=>isHito(n)&&!n.archived).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const mine=list.filter(n=>!n.targets||!n.targets.length||(me&&n.targets.includes(me)));
+  const others=list.filter(n=>!mine.includes(n));
+  const card=n=>{const seen=me&&n.confirms&&n.confirms[me];const to=n.targets&&n.targets.length?n.targets.join("・")+"さんへ":"みんなへ";
+    const cf=Object.keys(n.confirms||{}).filter(k=>n.confirms[k]);
+    return `<div class="hcard ${seen?"seen":""}"><span class="hto">今日のひとこと ・ ${esc(to)}${n.updatedBy?" ・ "+esc(n.updatedBy)+"より":""} ・ ${fmtTime(n.updatedAt)}</span><span class="htx">${esc(n.title||"")}${n.body?"\n"+esc(n.body):""}</span><span class="hbtns">${me&&!seen&&(!n.targets||!n.targets.length||n.targets.includes(me))?`<button class="hok" data-hok="${esc(n.id)}">✓ 見ました</button>`:""}${cf.length?`<span>✓ 見た人：${esc(cf.join("・"))}</span>`:""}${canWrite?`<button data-hdel="${esc(n.id)}">消す</button>`:""}</span></div>`};
+  let h=mine.map(card).join("");
+  if(HITOALL)h+=others.map(card).join("");
+  if(HITOFORM){const ps=people().filter(p=>p!=="情報共有"&&p!=="民泊");
+    h+=`<div class="hform"><b>📣 今日のひとことを書く</b><span class="small">だれに伝える？（選ばないとみんなへ）</span><div class="hwho">${ps.map(p=>`<label><input type="checkbox" name="h-to" value="${esc(p)}" hidden>${esc(p)}</label>`).join("")}</div><textarea id="h-text" maxlength="200" placeholder="例：今日はパークタウンMの施工を必ず終わらせてください／明日の集合時間が8時に変更になりました"></textarea><div class="row"><button type="button" class="btn" data-hcancel>やめる</button><button type="button" class="btn primary" data-hsave>伝える</button></div></div>`}
+  else if(canWrite)h+=`<div class="hbar"><button data-hnew>✏️ ひとことを書く</button>${others.length?`<button data-hall>${HITOALL?"▲ ほかの人へのひとことを隠す":"▼ ほかの人へのひとこと "+others.length+"件"}</button>`:""}</div>`;
+  box.className="hito";box.innerHTML=h}
+document.addEventListener("click",async e=>{
+  if(!e.target.closest("#hito"))return;
+  if(e.target.closest("[data-hnew]")){HITOFORM=true;renderHito();setTimeout(()=>$("h-text")&&$("h-text").focus(),50);return}
+  if(e.target.closest("[data-hcancel]")){HITOFORM=false;renderHito();return}
+  if(e.target.closest("[data-hall]")){HITOALL=!HITOALL;renderHito();return}
+  if(e.target.closest("[data-hsave]")){const tx=($("h-text").value||"").trim();if(!tx){toast("ひとことを書いてください");return}
+    const tg=[...document.querySelectorAll('input[name="h-to"]:checked')].map(x=>x.value);
+    HITOFORM=false;renderHito();toast("保存しています…");
+    try{apply(await api("apiSaveNote",{id:"",title:tx,body:"",property:"",pinned:false,dept:"ひとこと",targets:tg}));toast("ひとことを伝えました")}catch(err){toast("保存できませんでした。もう一度お試しください",9000)}return}
+  const ok=e.target.closest("[data-hok]");
+  if(ok){const id=ok.dataset.hok;notes=notes.map(x=>x.id===id?{...x,confirms:{...(x.confirms||{}),[ME]:Date.now()}}:x);renderHito();
+    try{apply(await api("apiConfirmNote",id))}catch(err){toast("保存できませんでした",9000);refresh()}return}
+  const del=e.target.closest("[data-hdel]");
+  if(del){const id=del.dataset.hdel;notes=notes.map(x=>x.id===id?{...x,archived:true}:x);renderHito();
+    try{apply(await api("apiArchiveNote",id,true))}catch(err){toast("消せませんでした",9000);refresh()}return}
+});
 function noteWho(n){return n.targets&&n.targets.length?n.targets:notePeople()}
-function noteNeedsMe(n){if(!ME||n.archived)return false;if(noteWho(n).indexOf(ME)<0)return false;return !(n.confirms&&n.confirms[ME])}
+function noteNeedsMe(n){if(!ME||n.archived||isHito(n))return false;if(noteWho(n).indexOf(ME)<0)return false;return !(n.confirms&&n.confirms[ME])}
 function noteBadge(){var c=notes.filter(noteNeedsMe).length;var b=document.querySelector('[data-view="notes"]');if(b)b.textContent=c?'情報共有（'+c+'）':'情報共有'}
 function noteCard(n){
   var who=noteWho(n),conf=n.confirms||{};
@@ -796,6 +848,7 @@ function renderNotes(){
   }
   var q=NQ.trim().toLowerCase();
   var list=notes.filter(function(n){
+      if(isHito(n))return false;
       if(NF.arc==="open"&&n.archived)return false;
       if(NF.arc==="arch"&&!n.archived)return false;
       if(NF.arc==="mine"&&!noteNeedsMe(n))return false;
