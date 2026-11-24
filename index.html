@@ -23,6 +23,7 @@
   --s-reply:#2f7a7a; --s-reply-bg:#d3ecea;
   --s-deliv:#b05a14; --s-deliv-bg:#fbe0c8;
   --over:#b0545e;
+  --ph:#cdbfb0;
   --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
   --f-body:"M PLUS Rounded 1c","Noto Sans JP","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
   --f-num:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
@@ -110,6 +111,7 @@ li.sect.now{background:var(--s-check-bg);color:var(--over);font-size:.95rem}
 li.task.is-now{box-shadow:inset 5px 0 0 var(--over)}
 li.task.is-now.is-late{background:color-mix(in srgb,var(--s-check-bg) 70%,var(--surface))}
 li.task.is-now .title{font-weight:800}
+input::placeholder,textarea::placeholder{color:var(--ph);opacity:1}
 .newtag{display:inline-block;background:var(--over);color:#fff;font-size:.7rem;font-weight:800;border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:2px;letter-spacing:.05em}
 li.sect.wait.tog .tg{font-weight:700;font-size:.78rem;border:1px solid currentColor;border-radius:999px;padding:2px 10px;white-space:nowrap}
 li.sect.wait.tog:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
