@@ -289,6 +289,7 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .dkrow label:has(input:checked){background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .due.asap{color:var(--over);font-family:var(--f-body);font-weight:700;font-size:.78rem}
 .due.later{color:var(--muted);font-family:var(--f-body);font-size:.78rem}
+.due .made{display:block;font-family:var(--f-body);font-size:1em;font-weight:800}
 .due .dkl{display:block;font-style:normal;font-family:var(--f-body);font-size:.7rem;font-weight:700}
 .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{font:inherit;font-weight:700;border-radius:8px;padding:9px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-block}
@@ -770,7 +771,7 @@ function row(t,i,n){
     const dl=daysLeft(t.due);let cls="",tag="";const dk=dkOf(t);
     if(dl!==null&&isOpen(t)){if(dl<0){cls="over";tag=dk==="施工日"?"施工日過ぎ":"期限切れ"}else if(dl===0){cls="over";tag="今日"}else if(dl<=3){cls="soon";tag=`あと${dl}日`}}
     const dkTxt=String((t.report&&t.report.dkTxt)||"").trim();
-    const dueHtml=dk==="なるべく早く"?`<span class="due asap">なるべく<br>早く</span>`:dk==="時間ができたら"?`<span class="due later">時間が<br>できたら</span>`:dk==="その他"?`<span class="due ${cls}">${dkTxt?`<em class="dkl">${esc(dkTxt)}</em>`:`<em class="dkl">その他</em>`}${t.due?fmtDue(t.due):""}${tag?`<em>${tag}</em>`:""}</span>`:`<span class="due ${cls}">${t.due?`<em class="dkl">${dk==="施工日"?"施工":"締切"}</em>`+fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>`;
+    const dueHtml=dk==="なるべく早く"?`<span class="due asap">なるべく<br>早く</span>`:dk==="時間ができたら"?`<span class="due later">時間が<br>できたら</span>`:dk==="その他"?`<span class="due ${cls}">${dkTxt?`<em class="dkl">${esc(dkTxt)}</em>`:`<em class="dkl">その他</em>`}${t.due?fmtDue(t.due):""}${tag?`<em>${tag}</em>`:""}</span>`:`<span class="due ${cls}">${t.due?(dk==="施工日"?`<em class="dkl">施工</em>`+fmtDue(t.due):fmtDue(t.due)+`<b class="made">までに</b>`):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>`;
     const memo=(t.memo||"").split(/\n/)[0];
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
