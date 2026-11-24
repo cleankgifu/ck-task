@@ -203,6 +203,7 @@ li.task.is-wait.is-deliv{background:color-mix(in srgb,var(--s-deliv-bg) 60%,var(
 li.task.is-wait.is-deliv .open{filter:none;opacity:.85}
 /* ⏸ 待ちに置くボタンと選択肢 */
 .arc.park{line-height:1.2;text-align:center;color:var(--muted)}
+.arc.back{line-height:1.2;text-align:center;font-size:.72rem;background:#fff4e6;color:#c2410c;border-color:#f08a24}
 .hito{margin:0 0 12px;display:flex;flex-direction:column;gap:8px}
 .hcard{position:relative;background:#fffbe6;border:2px solid #e6b800;border-radius:16px;padding:10px 12px 10px 52px;box-shadow:0 2px 0 rgba(0,0,0,.06)}
 :root[data-theme="dark"] .hcard{background:#3a3418}
@@ -604,8 +605,8 @@ const STATUSES=["未着手","進行中","前工程待ち","施工日決定待ち
 const DONE=new Set(["完了","確認済み","完了 請求書作成","完了アーカイブ","確認済みアーカイブ"]);
 const ARCH=new Set(["完了アーカイブ","確認済みアーカイブ"]);
 const WAITING="前工程待ち";
-// いつやるか：施工日／締切日（日付あり）・なるべく早く／時間ができたら（日付なし）。report.dk に入れる
-const DKS=["施工日","締切日","なるべく早く","時間ができたら"];
+// いつやるか：施工日／締切日（日付あり）・なるべく早く／時間ができたら（日付なし）・その他（自由記入 report.dkTxt、日付は任意）。report.dk に入れる
+const DKS=["施工日","締切日","なるべく早く","時間ができたら","その他"];
 const NODATE=new Set(["なるべく早く","時間ができたら"]);
 const dkOf=t=>{const k=t.report&&t.report.dk;return DKS.includes(k)?k:"締切日"};
 // 完了した日を report.doneAt に入れる（作業記録シートで使う）
@@ -768,7 +769,8 @@ function render(){try{renderHito()}catch(_){}
 function row(t,i,n){
     const dl=daysLeft(t.due);let cls="",tag="";const dk=dkOf(t);
     if(dl!==null&&isOpen(t)){if(dl<0){cls="over";tag=dk==="施工日"?"施工日過ぎ":"期限切れ"}else if(dl===0){cls="over";tag="今日"}else if(dl<=3){cls="soon";tag=`あと${dl}日`}}
-    const dueHtml=dk==="なるべく早く"?`<span class="due asap">なるべく<br>早く</span>`:dk==="時間ができたら"?`<span class="due later">時間が<br>できたら</span>`:`<span class="due ${cls}">${t.due?`<em class="dkl">${dk==="施工日"?"施工":"締切"}</em>`+fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>`;
+    const dkTxt=String((t.report&&t.report.dkTxt)||"").trim();
+    const dueHtml=dk==="なるべく早く"?`<span class="due asap">なるべく<br>早く</span>`:dk==="時間ができたら"?`<span class="due later">時間が<br>できたら</span>`:dk==="その他"?`<span class="due ${cls}">${dkTxt?`<em class="dkl">${esc(dkTxt)}</em>`:`<em class="dkl">その他</em>`}${t.due?fmtDue(t.due):""}${tag?`<em>${tag}</em>`:""}</span>`:`<span class="due ${cls}">${t.due?`<em class="dkl">${dk==="施工日"?"施工":"締切"}</em>`+fmtDue(t.due):"期限なし"}${tag?`<em>${tag}</em>`:""}</span>`;
     const memo=(t.memo||"").split(/\n/)[0];
     const canArc=canWrite&&DONE.has(t.status)&&!ARCH.has(t.status);
     const canCin=canWrite&&isCin(t)&&!DONE.has(t.status);
@@ -789,7 +791,7 @@ function row(t,i,n){
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
           ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
         ${(()=>{const fl=flagOf(t),say=String((t.report&&t.report.say)||"").trim(),mm=String(t.memo||"").trim();if(!fl&&!mm&&!say)return "";const txt=say||mm.split(/\n/).map(x=>x.trim()).filter(Boolean).slice(0,3).join("\n");return `<span class="bubw ${fl?"hot":""} ${say?"say":""}"><span class="bub">${fl?`<span class="flag">❗${esc(fl)}</span>`:""}${txt?`<span class="bt ${say?"say":""}">${esc(txt)}</span>`:""}</span></span>`})()}
-      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
+      </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&WAIT_ST.has(t.status)&&!REORDER?`<button class="arc back" data-wback="${esc(t.id)}">▶<br>やって<br>ください<br>に戻す</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
 }
 
 var NDEPTS=["全体","管理","工事","東建工事","事務","民泊清掃"];
@@ -1106,6 +1108,7 @@ function openSheet(id){
     <div class="field"><label for="e-title">タスク名</label><textarea id="e-title" class="title-in" rows="3" required ${ro?"disabled":""}>${esc(t.title)}</textarea></div>
     <div class="field sayf"><label for="e-say">💬 吹き出しのひとこと（一覧に出ます）</label><input id="e-say" maxlength="80" placeholder="例：榊原さんと金額の打ち合わせが必要" value="${esc((t.report&&t.report.say)||"")}" ${ro?"disabled":""}></div>
     <div class="field"><span class="lab">いつ？</span><div class="people dkrow" id="e-dk">${DKS.map(k=>`<label><input type="radio" name="e-dk" value="${k}" ${k===dkOf(t)?"checked":""} ${ro?"disabled":""}>${k}</label>`).join("")}</div>
+      <input id="e-dktxt" type="text" placeholder="自由に記入（例：入居者の都合がつく日、月末ごろ）" aria-label="その他の内容" value="${esc((t.report&&t.report.dkTxt)||"")}" ${dkOf(t)==="その他"?"":"hidden"} ${ro?"disabled":""}>
       <input id="e-due" type="date" aria-label="日付" value="${esc(t.due||"")}" ${NODATE.has(dkOf(t))?"hidden":""} ${ro?"disabled":""}></div>
     <div class="grid2">
       <div class="field"><label for="e-status">ステータス</label><select id="e-status" ${ro?"disabled":""}>${STATUSES.map(s=>`<option ${s===t.status?"selected":""}>${s}</option>`).join("")}</select></div>
@@ -1232,7 +1235,7 @@ function openSheet(id){
   $("form").addEventListener("click",async e=>{const b=e.target.closest("[data-rm]");if(!b)return;
     if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="?";b.setAttribute("aria-label","もう一度押すと外します");return}
     const rid=b.dataset.rm;atts=atts.filter(a=>a.id!==rid);drawAtts();await saveAtts();api("apiRemoveFile",rid).catch(()=>{})});
-  document.querySelectorAll("#e-dk input").forEach(r=>r.onchange=()=>{$("e-due").hidden=NODATE.has(r.value);if(!$("e-due").hidden&&!$("e-due").value)$("e-due").focus()});
+  document.querySelectorAll("#e-dk input").forEach(r=>r.onchange=()=>{$("e-due").hidden=NODATE.has(r.value);if($("e-dktxt"))$("e-dktxt").hidden=r.value!=="その他";if(r.value==="その他"&&$("e-dktxt")){$("e-dktxt").focus();return}if(!$("e-due").hidden&&!$("e-due").value)$("e-due").focus()});
   document.querySelectorAll("#form [data-set]").forEach(b=>b.onclick=()=>{$("e-status").value=b.dataset.set;$("form").requestSubmit()});
   $("bg").addEventListener("click",e=>{if(e.target.id==="bg")close()});
   $("e-cancel").onclick=close;
@@ -1271,7 +1274,7 @@ function openSheet(id){
     body.report.room=$("e-room").value.trim();
     {const pu=$("l-url")&&$("l-url").value.trim();if(pu&&/^https?:\/\//i.test(pu))LINKS.push({url:pu,title:$("l-title").value.trim()});}
     body.report.links=LINKS;
-    const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";
+    const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";if(dkSel==="その他")body.report.dkTxt=(($("e-dktxt")||{}).value||"").trim();else delete body.report.dkTxt;
     body.report=withDone(t,body.status,body.report);
     if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sName:$("r-sname").value.trim(),sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
     if(sReqSet!==null){body.report.sReq=sReqSet;if(sReqSet){body.report.sReqAt=Date.now();body.report.sReqBy=ME||""}else{delete body.report.sReqAt;delete body.report.sReqBy}}
@@ -1484,6 +1487,8 @@ $("list").addEventListener("click",async e=>{
   if(rq){const t=tasks.find(x=>x.id===rq.dataset.rpl);if(!t)return;saveQuick(t,{status:REPLY},"返事待ちコーナーに置きました");return}
   const rb=e.target.closest("[data-rback]");
   if(rb){const t=tasks.find(x=>x.id===rb.dataset.rback);if(!t)return;saveQuick(t,{status:"進行中"},t.status==="納品待ち"?"届いた → 進行中に戻しました":"進行中に戻しました");return}
+  const wb=e.target.closest("[data-wback]");
+  if(wb){const t=tasks.find(x=>x.id===wb.dataset.wback);if(!t)return;saveQuick(t,{status:"進行中"},"🔴 やってくださいに戻しました");return}
   const a=e.target.closest("[data-arc]");
   if(a){const t=tasks.find(x=>x.id===a.dataset.arc);if(!t)return;saveQuick(t,{status:arcStatus(t.status),report:withDone(t,arcStatus(t.status))},"アーカイブしました");return}
   const b=e.target.closest("[data-id]");if(b)openSheet(b.dataset.id)});
