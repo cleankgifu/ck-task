@@ -323,6 +323,7 @@ textarea.title-in{min-height:5.2em;font-size:1.05rem;font-weight:700;line-height
 .btn.done{background:var(--s-done);border-color:var(--s-done);color:var(--surface)}
 .rep{color:var(--s-done);font-weight:700}
 .repreq{color:var(--s-wait);background:var(--s-wait-bg);border-radius:4px;padding:1px 7px;font-weight:700}
+.repng{color:#fff;background:#d33;border-radius:4px;padding:1px 7px;font-weight:700}
 .reqbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .reqbar .st{font-weight:700;font-size:.88rem}
 .vchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -790,7 +791,7 @@ function row(t,i,n){
           ${(t.attachments||[]).filter(a=>a.kind==="file").length?`<span>📎${t.attachments.filter(a=>a.kind==="file").length}</span>`:""}
           ${(t.attachments||[]).some(a=>a.kind==="report")?`<span class="rep">📷完了報告あり</span>`:""}
           ${t.report&&t.report.req==="依頼中"?`<span class="repreq">📄報告書 作成待ち</span>`:t.report&&t.report.req==="作成済"?`<span class="rep">📄報告書 作成済</span>`:""}
-          ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:""}</span>
+          ${t.report&&t.report.sReq==="依頼中"?`<span class="repreq">🔧修繕報告書 作成待ち</span>`:t.report&&t.report.sReq==="作成済"?`<span class="rep">🔧修繕報告書 作成済</span>`:t.report&&t.report.sReq==="作成できず"?`<span class="repng">⚠ 修繕報告書が作れませんでした</span>`:""}</span>
         ${(()=>{const fl=flagOf(t),say=String((t.report&&t.report.say)||"").trim(),mm=String(t.memo||"").trim();if(!fl&&!mm&&!say)return "";const txt=say||mm.split(/\n/).map(x=>x.trim()).filter(Boolean).slice(0,3).join("\n");return `<span class="bubw ${fl?"hot":""} ${say?"say":""}"><span class="bub">${fl?`<span class="flag">❗${esc(fl)}</span>`:""}${txt?`<span class="bt ${say?"say":""}">${esc(txt)}</span>`:""}</span></span>`})()}
       </span>${t.projectId?(()=>{const st=projSteps(t),nx=projNext(t);return `<span class="pnext"><span class="projtag">▸ ${esc(t.projectName||"プロジェクト")}</span><span class="pdots">${st.map(x=>`<i class="${x.id===t.id?"c":DONE.has(x.status)?"d":""}"></i>`).join("")}</span><span>${(t.step??0)+1}/${t.stepTotal||st.length}</span>${DONE.has(t.status)?"":nx?`<span>→ 次：${esc(stepName(nx))}${(nx.assignees||[]).length?"（"+esc(nx.assignees.join("・"))+"）":""}</span>`:`<span>→ これで最後</span>`}</span>`})():""}</button>${mv?`<span class="mv"><button data-mv="up" data-mid="${esc(t.id)}" aria-label="上へ" ${i===0?"disabled":""}>▲</button><button data-mv="down" data-mid="${esc(t.id)}" aria-label="下へ" ${i===n-1?"disabled":""}>▼</button></span>`:canCin?`<button class="arc cin" data-cin="${esc(t.id)}" aria-label="賃貸革命に入力したら押す"><span class="box">☐</span><span>入力したら<br>押す</span></button>`:canArc?`<button class="arc" data-arc="${esc(t.id)}">アーカイブ</button>`:canWrite&&t.status===REPLY?`<button class="arc rpl" data-rback="${esc(t.id)}">📩<br>返事きた</button>`:canWrite&&t.status==="納品待ち"?`<button class="arc rpl" style="background:var(--s-deliv-bg);color:var(--s-deliv);border-color:var(--s-deliv)" data-rback="${esc(t.id)}">📦<br>届いた</button>`:canWrite&&WAIT_ST.has(t.status)&&!REORDER?`<button class="arc back" data-wback="${esc(t.id)}">▶<br>やって<br>ください<br>に戻す</button>`:canWrite&&!DONE.has(t.status)&&!REORDER?`<button class="arc park" data-park="${esc(t.id)}" aria-expanded="${PICK===t.id}">⏸<br>待ちへ</button>`:""}</li>${PICK===t.id?`<li class="pickrow"><span>どこに置く？</span><button class="p-reply" data-pset="返事待ち" data-pid="${esc(t.id)}">💬 返事待ち</button><button class="p-deliv" data-pset="納品待ち" data-pid="${esc(t.id)}">📦 納品待ち</button><button class="p-wait" data-pset="施工待ち" data-pid="${esc(t.id)}">🔨 施工待ち</button><button class="p-hold" data-pset="保留" data-pid="${esc(t.id)}">⏸ 保留</button><button class="p-x" data-pset="" data-pid="">やめる</button></li>`:""}`;
 }
@@ -1162,8 +1163,9 @@ function openSheet(id){
       <div class="field"><label for="r-snotes">特記・今後の注意</label><textarea id="r-snotes" rows="2" placeholder="例：ほかの部屋も同年式のため、今後交換の可能性あり" ${ro?"disabled":""}>${esc(r.sNotes||"")}</textarea></div>
       <span class="small">写真は上の「作業の写真（ビフォー・アフター）」に入れてください。依頼人・物件名・この欄・写真で修繕完了報告書を作り、依頼主のメールあての下書き（PDF添付）まで用意します。メールが空のときは、依頼主の名前でGmailのやり取りから探して入れます。送信は吉田さんが確認してから行います。</span>
       ${id?`<div class="reqbar">${r.sReq==="依頼中"?`<span class="st repreq">📄 作成依頼済み${r.sReqAt?"（"+new Date(r.sReqAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+"）":""}</span>${ro?"":`<button type="button" class="btn small-btn" id="s-cancelreq">依頼を取り消す</button>`}`
+        :r.sReq==="作成できず"?`<span class="st repng">⚠ 修繕報告書が作れませんでした${r.sErr?"："+esc(r.sErr):""}</span>${ro?"":`<button type="button" class="btn small-btn" id="s-req">直したので もう一度作成を依頼</button>`}`
         :r.sReq==="作成済"?`<span class="st rep">✅ 修繕報告書 作成済み${r.sPdf?"："+esc(r.sPdf):""}</span>${ro?"":`<button type="button" class="btn small-btn" id="s-req">もう一度作成を依頼</button>`}`
-        :ro?"":`<button type="button" class="btn primary" id="s-req">📄 修繕完了報告書を作成依頼</button><span class="small">入力と写真がそろったら押してください。</span>`}</div>`:""}</details>`})()}
+        :ro?"":`<button type="button" class="btn primary" id="s-req">📄 修繕完了報告書を作成依頼</button><span class="small">アフター写真を入れたら押してください。作業内容が空のときは、件名から作って入れます。</span>`}</div>`:""}</details>`})()}
     ${t.due?`<div class="calbox"><a class="btn cal" href="${calUrl(t)}" target="_blank" rel="noopener">📅 Googleカレンダーに追加</a><span class="small">追加したあと、Googleカレンダー側で「前日に通知」などを設定するとリマインダーになります。</span></div>`:""}
     <p class="small" id="e-who"></p>
     <div class="actions">
@@ -1253,9 +1255,8 @@ function openSheet(id){
   if($("r-cancelreq"))$("r-cancelreq").onclick=()=>{reqSet="";$("form").requestSubmit()};
   let sReqSet=null;
   if($("s-req"))$("s-req").onclick=()=>{
-    if(!atts.some(a=>a.kind==="report")){toast("先に「完成（アフター）」の写真を追加してください");return}
-    if(!$("r-swork").value.trim()){toast("作業内容を入れてください");$("r-swork").focus();return}
-    const m=$("r-smail").value.trim();if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){toast("依頼主のメールアドレスを確認してください");$("r-smail").focus();return}
+    if(!atts.some(a=>a.kind==="report")){toast("先に「完成（アフター）」の写真を追加してください（依頼はまだ出ていません）",8000);return}
+    const m=$("r-smail").value.trim();if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){toast("依頼主のメールアドレスを確認してください（依頼はまだ出ていません）",8000);$("r-smail").focus();return}
     sReqSet="依頼中";$("form").requestSubmit()};
   if($("s-cancelreq"))$("s-cancelreq").onclick=()=>{sReqSet="";$("form").requestSubmit()};
   if($("r-prev"))$("r-prev").onclick=()=>{const pr=$("e-prop").value.trim();
@@ -1278,7 +1279,7 @@ function openSheet(id){
     const dkSel=(document.querySelector("#e-dk input:checked")||{}).value||"締切日";body.report.dk=dkSel;if(NODATE.has(dkSel))body.due="";if(dkSel==="その他")body.report.dkTxt=(($("e-dktxt")||{}).value||"").trim();else delete body.report.dkTxt;
     body.report=withDone(t,body.status,body.report);
     if($("r-swork"))Object.assign(body.report,{sDate:$("r-sdate").value||"",sName:$("r-sname").value.trim(),sMail:$("r-smail").value.trim(),sCause:$("r-scause").value.trim(),sWork:$("r-swork").value.trim(),sParts:$("r-sparts").value.trim(),sNotes:$("r-snotes").value.trim()});
-    if(sReqSet!==null){body.report.sReq=sReqSet;if(sReqSet){body.report.sReqAt=Date.now();body.report.sReqBy=ME||""}else{delete body.report.sReqAt;delete body.report.sReqBy}}
+    if(sReqSet!==null){body.report.sReq=sReqSet;if(sReqSet){body.report.sReqAt=Date.now();body.report.sReqBy=ME||"";delete body.report.sErr}else{delete body.report.sReqAt;delete body.report.sReqBy}}
     if(reqSet!==null){body.report.req=reqSet;if(reqSet){body.report.reqAt=Date.now();body.report.reqBy=ME||""}else{delete body.report.reqAt;delete body.report.reqBy}}
     if(!body.title){$("e-title").focus();return}
     // 待たせない：すぐ画面に反映して閉じ、送信は裏で行う（失敗したら元に戻して知らせる）
